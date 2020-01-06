@@ -12,8 +12,13 @@
          cambium/cambium.core                {:mvn/version "0.9.2"}
          cambium/cambium.codec-cheshire      {:mvn/version "0.9.2"}
 
-         org.clojure/test.check {:mvn/version "0.10.0"}}
- :aliases {:artifact-name {:extra-deps {metav {:mvn/version "1.6.1"}}
+         org.clojure/test.check {:mvn/version "0.10.0"}
+         metav {:local/root "../metav"}
+         }
+ :aliases {:artifact-name {:extra-deps {metav
+                                       ; {:mvn/version "1.6.1"}
+                                        {:local/root "../metav"}
+                                        }
                            :main-opts  ["-m" "metav.display"]}
            :spit          {:extra-deps {metav {:mvn/version "1.6.1"}}
                            :main-opts  ["-m" "metav.spit" ]}

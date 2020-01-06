@@ -20,6 +20,9 @@
   (stop [_] "Lifecycle operation as event bus is likely in need of some cleanup after use (subscribers for instance...)"))
 
 
+(defprotocol Valueable
+  "Protocol for common value operations"
+  (to-string [this] "Returns a standard string representation of that value that can be parsed with value-of function"))
 
 
 (defprotocol Localizable
