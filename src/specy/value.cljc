@@ -56,8 +56,8 @@
      `(do
         ~(if (not-empty opts+sigs)
            `(defprotocol ~@opts+sigs)
-           `(defprotocol (symbol (str name "able"))))
-        (defrecord ~name [~@fields-name])
+           `(defprotocol ~(symbol (str name "able"))))
+        (defrecord ~name [~@fields-name] ~(symbol (str name "able")))
         (add-valuable-operations ~name ~fields-name))
      )))
 (s/def ::iso-code (every-pred string? #(= (count %) 3)))
