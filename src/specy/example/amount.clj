@@ -41,14 +41,12 @@
                     symbol string?
                     fraction-digits int?])
 
-(defvalue Amount [qty pos-int?
-                  currency Currency])
 
 (defvalue Amount
   [qty int?
    currency Currency]
   Amountable
-  (qty [amount])
+  (qty [this])
   (add [this other])
   (subtract [this other])
   (eq [this other])

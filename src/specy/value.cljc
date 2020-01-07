@@ -5,24 +5,8 @@
                 :cljs cljs.spec.alpha) :as s]
             [clojure.test.check.generators :as check-gen]
             [specy.domain :refer :all]
+            [specy.utils :refer [inspect operations]]
             ))
-
-(defn pred-spec-or-class? [x]
-  (cond
-    (and (keyword? x) (s/get-spec x)) :spec
-    (var? (resolve x)) (when-let [fn? (fn? (deref (resolve x)))]
-                                                      (when fn? (let [argslist (:arglists (meta #'int?))]
-                                                                  :pred)))
-    (class? (type (resolve x))) :class
-    :default (throw (ex-info "pred spec or class not found" {:x x}))))
-
-(defn inspect [fields]
-  (let [m (apply hash-map fields)]
-    (map (fn [[field-name x]]
-           {:field field-name
-            :field-name (str field-name)
-            :ref x
-            :kind (pred-spec-or-class? x)}) m)))
 
 (defmacro doseq-macro
   [macroname & args]
@@ -42,23 +26,28 @@
            (.toString ~sb))))))
 
 
+
 (defmacro defvalue
   "(defvalue name [fields*] protocol-name [operations*] options*) "
-  {:arglists '([name [& fields] & opts+sigs])}
-  ([name fields & opts+sigs]
-   (println name)
-   (println fields)
-   (println opts+sigs)
+  {:arglists '([name [& fields] & opts+specs])}
+  ([name fields & opts+specs]
    (let [inspected-fields (inspect fields)
-         fields-name (map :field inspected-fields)]
-     (println fields-name)
-     (println inspected-fields)
+         fields-name (map :field inspected-fields)
+         [interfaces methods opts] (parse-opts+specs opts+specs)
+         operations (operations methods)]
      `(do
-        ~(if (not-empty opts+sigs)
-           `(defprotocol ~@opts+sigs)
+        ~(if (not-empty opts+specs)
+           `(defprotocol ~@opts+specs)
            `(defprotocol ~(symbol (str name "able"))))
-        (defrecord ~name [~@fields-name] ~(symbol (str name "able")))
-        (add-valuable-operations ~name ~fields-name))
+        (defrecord ~name [~@fields-name] ~(if (not-empty opts+specs) (first opts+specs) (symbol (str name "able"))))
+        (add-valuable-operations ~name ~fields-name)
+        ;;return the value as a data structure
+        {:name ~name
+         :fields ~(vec (map #(dissoc % :field) inspected-fields))
+         :interface ~(first interfaces)
+         :operations ~operations
+         }
+        )
      )))
 (s/def ::iso-code (every-pred string? #(= (count %) 3)))
 
@@ -72,4 +61,18 @@
                   currency Currency])
 
 
+(defvalue Amount
+  [qty int?
+   currency Currency]
+  Amountable
+  (qty [this])
+  (add [this other])
+  (subtract [this other])
+  (eq [this other])
+  (currency [amount])
+  (currency-iso-code [amount])
+  (currency-numeric-code [amount])
+  (currency-display-name [amount])
+  (currency-symbol [amount])
+  (currency-fraction-digits [amount]))
 
