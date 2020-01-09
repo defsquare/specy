@@ -1,4 +1,4 @@
-(ns specy.domain
+(ns specy.protocols
   (:require [#?(:clj  clojure.spec.gen.alpha
                 :cljs cljs.spec.gen.alpha) :as gen]
             [#?(:clj  clojure.spec.alpha

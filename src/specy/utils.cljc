@@ -5,6 +5,13 @@
                 :cljs cljs.spec.alpha) :as s]
             ))
 
+(declare create-map)
+(defmacro create-map
+  "Utility macro that create a map from a list of symbols that are in scope"
+  [& syms]
+  (zipmap (map keyword syms) syms))
+
+
 (defn pred-spec-or-class? [x]
   (cond
     (and (keyword? x) (s/get-spec x)) :spec
@@ -51,7 +58,7 @@
         `(~new-params
           ~lets)))))
 
-(defn- parse-opts+specs [opts+specs]
+(defn parse-opts+specs [opts+specs]
   (let [[opts specs] (parse-opts opts+specs)
         impls (parse-impls specs)
         interfaces (-> (map #(if (var? (resolve %))

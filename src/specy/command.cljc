@@ -3,19 +3,20 @@
                 :cljs cljs.spec.gen.alpha) :as gen]
             [#?(:clj  clojure.spec.alpha
                 :cljs cljs.spec.alpha) :as s]
+            [clojure.test.check.generators :as check-gen]
+            [tick.alpha.api :as t]
+            [specy.uuid :as uuid]
+            [specy.utils :refer [create-map]]
+
+            [specy.time :as time]
             ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Command Spec                                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(declare create-map)
-(defmacro create-map
-          "Utility macro that create a map from a list of symbols that are in scope"
-          [& syms]
-          (zipmap (map keyword syms) syms))
 
 (defmulti command-type :command-type)
-(s/def ::command (s/multi-spec command-type :command-type))
+(s/def ::comand (s/multi-spec command-type :command-type))
 
 ;;command are implemented in domain project like:
 ;;  (defmethod command-type ::create-organization-command [_]

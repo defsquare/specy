@@ -3,6 +3,13 @@
                 :cljs cljs.spec.gen.alpha) :as gen]
             [#?(:clj  clojure.spec.alpha
                 :cljs cljs.spec.alpha) :as s]
+            [clojure.test.check.generators :as check-gen]
+            [tick.alpha.api :as t]
+            [specy.uuid :as uuid]
+            [specy.utils :refer [create-map]]
+            [specy.time :as time]
+            [specy.command :as command]
+            [specy.query :as query]
             ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -15,8 +22,8 @@
 (s/def ::from-query-ref uuid?)
 (s/def ::published-at ::time/instant)
 (s/def ::published-by string?)
-(s/def ::from-command ::command-metadata)
-(s/def ::from-query ::query-metadata)
+(s/def ::from-command ::command/command-metadata)
+(s/def ::from-query ::query/query-metadata)
 
 (defmulti event-type :event-type)
 (s/def ::event (s/multi-spec event-type :event-type))

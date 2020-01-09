@@ -4,8 +4,10 @@
             [#?(:clj  clojure.spec.alpha
                 :cljs cljs.spec.alpha) :as s]
             [clojure.test.check.generators :as check-gen]
-            [specy.domain :refer :all]
-            [specy.utils :refer [inspect operations]]
+
+            [specy.protocols :refer :all]
+            [specy.core-async-bus :refer [bus]]
+            [specy.utils :refer [inspect operations parse-opts+specs]]
             ))
 
 (defmacro doseq-macro
@@ -25,8 +27,6 @@
                                `(.append ~sb (get ~value ~(keyword (str field)))))) (interpose :space fields))
            (.toString ~sb))))))
 
-
-
 (defmacro defvalue
   "(defvalue name [fields*] protocol-name [operations*] options*) "
   {:arglists '([name [& fields] & opts+specs])}
@@ -39,40 +39,14 @@
         ~(if (not-empty opts+specs)
            `(defprotocol ~@opts+specs)
            `(defprotocol ~(symbol (str name "able"))))
-        (defrecord ~name [~@fields-name] ~(if (not-empty opts+specs) (first opts+specs) (symbol (str name "able"))))
+        (defrecord ~name [~@fields-name]);~(if (not-empty opts+specs) (first opts+specs) (symbol (str name "able")))
         (add-valuable-operations ~name ~fields-name)
         ;;return the value as a data structure
-        {:name ~name
-         :fields ~(vec (map #(dissoc % :field) inspected-fields))
-         :interface ~(first interfaces)
-         :operations ~operations
-         }
-        )
-     )))
-(s/def ::iso-code (every-pred string? #(= (count %) 3)))
-
-(defvalue Currency [iso-code ::iso-code
-                    numeric-code pos-int?
-                    display-name string?
-                    symbol string?
-                    fraction-digits int?])
-
-(defvalue Amount [qty pos-int?
-                  currency Currency])
-
-
-(defvalue Amount
-  [qty int?
-   currency Currency]
-  Amountable
-  (qty [this])
-  (add [this other])
-  (subtract [this other])
-  (eq [this other])
-  (currency [amount])
-  (currency-iso-code [amount])
-  (currency-numeric-code [amount])
-  (currency-display-name [amount])
-  (currency-symbol [amount])
-  (currency-fraction-digits [amount]))
-
+        (let [value-desc# {:name ~name
+                          :kind :value
+                          :fields ~(vec (map #(dissoc % :field) inspected-fields))
+                          :interface ~(first interfaces)
+                          :operations ~operations
+                          }]
+          (publish! bus value-desc#)
+          value-desc#)))))

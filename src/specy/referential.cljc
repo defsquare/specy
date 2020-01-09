@@ -4,6 +4,11 @@
             [#?(:clj  clojure.spec.alpha
                 :cljs cljs.spec.alpha) :as s]
             [clojure.test.check.generators :as check-gen]
+
+            [specy.protocols :refer :all]
+            [specy.core-async-bus :refer [bus]]
+            [specy.utils :refer [inspect operations parse-opts+specs]]
+
             ))
 
 (defmacro defreferential
