@@ -23,6 +23,7 @@
            `(defprotocol ~@opts+specs)
            `(defprotocol ~(symbol (str name "able"))))
         (defrecord ~name [~@fields-name] ~(if (not-empty opts+specs) (first opts+specs) (symbol (str name "able"))))
+        ;;TODO create the repository interface associated to that entity ? or build a defrepository macro ?
         (let [entity-desc# {:name ~name
                            :kind :entity
                            :fields ~(vec (map #(dissoc % :field) inspected-fields))

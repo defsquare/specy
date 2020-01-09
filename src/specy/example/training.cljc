@@ -13,6 +13,8 @@
 (defentity Training
   [id uuid?
    name string?
-   duration Duration])
+   content string?
+   duration Duration
+   price Amount])
 
 
