@@ -3,6 +3,7 @@
                 :cljs cljs.spec.gen.alpha) :as gen]
             [#?(:clj  clojure.spec.alpha
                 :cljs cljs.spec.alpha) :as s]
+            [specy.protocols :refer [find-value-by-class]]
             ))
 
 (declare create-map)
@@ -11,23 +12,27 @@
   [& syms]
   (zipmap (map keyword syms) syms))
 
+(defn pred-spec-value-or-class?
+  ([x]
+   (pred-spec-value-or-class? x))
+  ([building-blocks-repo x]
+   (cond
+     (and (keyword? x) (s/get-spec x)) :spec
+     (var? (resolve x)) (when-let [fn? (fn? (deref (resolve x)))]
+                          (when fn? (let [argslist (:arglists (meta #'int?))]
+                                      :pred)))
+     (when building-blocks-repo (find-value-by-class building-blocks-repo x)) :value
+     (class? (type (resolve x))) :class
+     :default (throw (ex-info "Pred, spec, value or class not found!" {:x x})))))
 
-(defn pred-spec-or-class? [x]
-  (cond
-    (and (keyword? x) (s/get-spec x)) :spec
-    (var? (resolve x)) (when-let [fn? (fn? (deref (resolve x)))]
-                         (when fn? (let [argslist (:arglists (meta #'int?))]
-                                     :pred)))
-    (class? (type (resolve x))) :class
-    :default (throw (ex-info "pred spec or class not found" {:x x}))))
-
-(defn inspect [fields]
+(defn inspect [building-blocks-repo fields]
   (let [m (apply hash-map fields)]
     (map (fn [[field-name x]]
-           {:field field-name
-            :field-name (str field-name)
-            :ref x
-            :kind (pred-spec-or-class? x)}) m)))
+           (let [kind (pred-spec-value-or-class? building-blocks-repo x)]
+             {:field field-name
+              :field-name (str field-name)
+              :ref x
+              :kind kind})) m)))
 
 
 (defn- parse-opts [s]

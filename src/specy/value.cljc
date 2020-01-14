@@ -6,7 +6,8 @@
             [clojure.test.check.generators :as check-gen]
 
             [specy.protocols :refer :all]
-            [specy.core-async-bus :refer [bus]]
+            [specy.infra.bus :refer [bus]]
+            [specy.infra.repository :refer [building-blocks]]
             [specy.utils :refer [inspect operations parse-opts+specs]]
             ))
 
@@ -31,10 +32,11 @@
   "(defvalue name [fields*] protocol-name [operations*] options*) "
   {:arglists '([name [& fields] & opts+specs])}
   ([name fields & opts+specs]
-   (let [inspected-fields (inspect fields)
+   (let [inspected-fields (inspect building-blocks fields)
          fields-name (map :field inspected-fields)
          [interfaces methods opts] (parse-opts+specs opts+specs)
-         operations (operations methods)]
+         operations (operations methods)
+         ns *ns*]
      `(do
         ~(if (not-empty opts+specs)
            `(defprotocol ~@opts+specs)
@@ -42,11 +44,16 @@
         (defrecord ~name [~@fields-name]);~(if (not-empty opts+specs) (first opts+specs) (symbol (str name "able")))
         (add-valuable-operations ~name ~fields-name)
         ;;return the value as a data structure
-        (let [value-desc# {:name ~name
-                          :kind :value
-                          :fields ~(vec (map #(dissoc % :field) inspected-fields))
-                          :interface ~(first interfaces)
-                          :operations ~operations
+        (let [value-desc# {:name       (clojure.reflect/typename ~name)
+                           :longname   ~(str ns "/" (clojure.reflect/typename name))
+                           :ns         ~ns ;;caller ns
+                           :id         ~(keyword (str ns) (clojure.string/lower-case (str name)))
+                           :class      ~name
+                           :kind       :value
+                           :fields     ~(vec (map #(dissoc % :field) inspected-fields))
+                           :interface  ~(first interfaces)
+                           :operations ~operations
                           }]
+          (store! building-blocks value-desc#)
           (publish! bus value-desc#)
           value-desc#)))))

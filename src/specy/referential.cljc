@@ -6,9 +6,9 @@
             [clojure.test.check.generators :as check-gen]
 
             [specy.protocols :refer :all]
-            [specy.core-async-bus :refer [bus]]
             [specy.utils :refer [inspect operations parse-opts+specs]]
 
+            [specy.infra.bus :refer [bus]]
             ))
 
 (defmacro defreferential

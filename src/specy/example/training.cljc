@@ -10,11 +10,10 @@
    [java.time Duration]
    [specy.example.amount Amount]))
 
-(defentity Training
-  [id uuid?
-   name string?
-   content string?
-   duration Duration
-   price Amount])
+(defentity Training [id uuid?
+                     name string?
+                     content string?
+                     duration Duration
+                     price Amount])
 
 

@@ -1,4 +1,4 @@
-(ns specy.core-async-bus
+(ns specy.infra.bus
   (:require
    [clojure.tools.logging :as log :refer [info]]
    #?(:clj  [clojure.core.async :refer [chan <! >! timeout pub sub unsub unsub-all go go-loop buffer dropping-buffer]])
