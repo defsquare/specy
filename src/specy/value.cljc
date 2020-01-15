@@ -44,8 +44,8 @@
         (defrecord ~name [~@fields-name]);~(if (not-empty opts+specs) (first opts+specs) (symbol (str name "able")))
         (add-valuable-operations ~name ~fields-name)
         ;;return the value as a data structure
-        (let [value-desc# {:name       (clojure.reflect/typename ~name)
-                           :longname   ~(str ns "/" (clojure.reflect/typename name))
+        (let [value-desc# {:name       ~(str name)
+                           :longname   (clojure.reflect/typename ~name)
                            :ns         ~ns ;;caller ns
                            :id         ~(keyword (str ns) (clojure.string/lower-case (str name)))
                            :class      ~name

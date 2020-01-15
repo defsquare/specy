@@ -29,8 +29,8 @@
            `(defrecord ~name [~@fields-name]))
         ;;TODO create the repository interface associated to that entity ? or build a defrepository macro ?
         (let [entity-desc# (merge {:id         ~(keyword (str ns) (clojure.string/lower-case (str name)))
-                                   :name       (clojure.reflect/typename ~name)
-                                   :longname   (str ~ns "/" (clojure.reflect/typename ~name))
+                                   :name       ~(str name)
+                                   :longname   (clojure.reflect/typename ~name)
                                    :ns         ~ns ;;caller ns
                                    :class      ~name
                                    :kind       :entity
