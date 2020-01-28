@@ -29,10 +29,22 @@
            (.toString ~sb))))))
 
 (defmacro defvalue
-  "(defvalue name [fields*] protocol-name [operations*] options*) "
-  {:arglists '([name [& fields] & opts+specs])}
-  ([name fields & opts+specs]
-   (let [inspected-fields (inspect building-blocks fields)
+  "(defvalue name docstring? [fields*] protocol-name [operations*] options*) "
+  {:arglists '([name docstring? [& fields] & opts+specs])}
+  ([name & args]
+   (let [
+         ;;next lines deal with docstring optionality ...
+         m (if (string? (first args))
+             {:doc (first args)}
+             {})
+         ;;remove docstring from args
+         args (if (string? (first args))
+                 (next args)
+                 args)
+         fields (when (vector? (first args)) (first args))
+         opts+specs (rest args)
+
+         inspected-fields (inspect building-blocks fields)
          fields-name (map :field inspected-fields)
          [interfaces methods opts] (parse-opts+specs opts+specs)
          operations (operations methods)
@@ -53,6 +65,7 @@
                            :fields     ~(vec (map #(dissoc % :field) inspected-fields))
                            :interface  ~(first interfaces)
                            :operations ~operations
+                           :doc        ~(:doc m)
                           }]
           (store! building-blocks value-desc#)
           (publish! bus value-desc#)

@@ -9,18 +9,16 @@
             [specy.utils :refer [inspect operations parse-opts+specs]]
 
             [specy.infra.bus :refer [bus]]
+            [specy.infra.repository :refer [building-blocks]]
             ))
 
 (defmacro defreferential
   "(defreferential name [fields*]) "
   {:arglists '([name [& fields]  & opts])}
   ([name fields]
-   (let [inspected-fields (inspect fields)
+   (let [inspected-fields (inspect building-blocks fields)
          fields-name (map :field inspected-fields)]
-     (println fields-name)
      `(defrecord ~name [~@fields-name])
-     (println inspected-fields)
-     
      )))
 
 

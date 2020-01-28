@@ -38,6 +38,7 @@
                                    :operations ~operations}
                                   ~(when (not-empty opts+specs)
                                      :interface ~(first interfaces)))]
+          ;;TODO create spec associated to the entity
           (store! building-blocks entity-desc#)
           (publish! bus entity-desc#)
           entity-desc#)))))

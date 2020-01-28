@@ -23,16 +23,22 @@
                                       :pred)))
      (when building-blocks-repo (find-value-by-class building-blocks-repo x)) :value
      (class? (type (resolve x))) :class
-     :default (throw (ex-info "Pred, spec, value or class not found!" {:x x})))))
+     :default (throw (ex-info (str "Pred, spec, value or class "x" not found! " x " must be a predicate function, a spec keyword, a value or a class type") {:x x})))))
 
 (defn inspect [building-blocks-repo fields]
-  (let [m (apply hash-map fields)]
-    (map (fn [[field-name x]]
-           (let [kind (pred-spec-value-or-class? building-blocks-repo x)]
-             {:field field-name
-              :field-name (str field-name)
-              :ref x
-              :kind kind})) m)))
+  (loop [[field-name x opts? & remainings-fields] fields
+         acc []]
+    (let [kind (pred-spec-value-or-class? building-blocks-repo x)
+          ;if opts? is a coll then it is considered present, otherwise it's a symbol representing the next field name that must be kept for the next iteration
+          remainings-fields (if (coll? opts?) remainings-fields (cons opts? remainings-fields))
+          acc (conj acc (merge {:field field-name
+                            :field-name (str field-name)
+                            :ref x
+                            :kind kind} (when (coll? opts?) {:opts opts?})))]
+      (if (empty? (filter identity remainings-fields));filter nil in remainings-fields
+        acc
+        (recur remainings-fields
+               acc)))))
 
 
 (defn- parse-opts [s]
