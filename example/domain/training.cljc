@@ -1,4 +1,4 @@
-(ns specy.example.training
+(ns domain.training
   (:require [specy.value :refer [defvalue]]
             [specy.entity :refer [defentity]]
             [specy.event :refer [defevent]]
@@ -6,11 +6,10 @@
             [specy.query :refer [defquery]]
             [specy.rule :refer [defrule]]
             [specy.referential :refer [defreferential]]
-
-            [specy.example.amount :as amount])
+            [clojure.spec.alpha :as s])
   (:import
    [java.time Duration]
-   [specy.example.amount Amount]))
+   [domain.amount Amount]))
 
 (defentity Training [id       uuid?
                      name     string?
@@ -34,6 +33,27 @@
                        name string?
                        skills Skill {:cardinality :multiple
                                      :queryable true}])
+
+(s/def ::skill-id uuid?)
+(s/def ::instructor-id uuid?)
+(s/def ::add-skill-to-instructor-payload (s/keys :req-un [::skill-id ::instructor-id]))
+
+(defcommand ::add-skill-to-instructor
+            ::add-skill-to-instructor-payload
+            {:doc "Add a skill to an instructor"
+             :rely-on Instructor})
+
+(s/def ::find-instructors-with-skill-payload (s/keys :req-un [::skill-id]))
+(defquery ::find-instructors-with-skill ::find-instructors-with-skill-payload
+          {:doc "Find an instructor with a specific skill"
+           :rely-on Instructor})
+
+(s/def ::instructors-with-skill-found-payload (s/coll-of ::instructor-id))
+(defevent ::instructors-with-skill-found ::instructors-with-skill-found-payload
+          {:doc "List of instructor found with specific skill"
+           :rely-on Instructor})
+
+
 ;(postgres/config Instructor {Skill {:data-type-gen true}})
 
 

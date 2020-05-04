@@ -1,4 +1,4 @@
-(ns specy.example.currencies
+(ns domain.currencies
   "Contains a symbol with a map of currency iso code to currency value for the 20 most traded currencies in the world")
 
 (defn dissoc-unused-attrs [currency]

@@ -1,4 +1,4 @@
-(ns specy.example.amount
+(ns domain.amount
   "Contains a symbol with a map of currency iso code to currency value for the 20 most traded currencies in the world"
   (:require
    [clojure.spec.alpha :as s]
@@ -7,7 +7,7 @@
    #?(:cljs ["/electre/common/big.js" :as big :refer [Big]]);;needs shadow-cljs for properly requiring https://shadow-cljs.github.io/docs/UsersGuide.html#_requiring_js
    #?(:cljs [cljs-bean.core :refer [bean ->clj ->js]])
    [specy.value :refer [defvalue]]
-   [specy.example.currencies :refer [dissoc-unused-attrs iso->currency]]
+   [example.currencies :refer [dissoc-unused-attrs iso->currency]]
    ))
 
 (defn all-currencies []
