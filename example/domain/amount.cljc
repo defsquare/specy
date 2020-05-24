@@ -1,14 +1,13 @@
 (ns domain.amount
   "Contains a symbol with a map of currency iso code to currency value for the 20 most traded currencies in the world"
   (:require
-   [clojure.spec.alpha :as s]
-   [clojure.spec.gen.alpha :as gen]
-   [clojure.test.check.generators :as check-gen]
-   #?(:cljs ["/electre/common/big.js" :as big :refer [Big]]);;needs shadow-cljs for properly requiring https://shadow-cljs.github.io/docs/UsersGuide.html#_requiring_js
-   #?(:cljs [cljs-bean.core :refer [bean ->clj ->js]])
-   [specy.value :refer [defvalue]]
-   [example.currencies :refer [dissoc-unused-attrs iso->currency]]
-   ))
+    [clojure.spec.alpha :as s]
+    [clojure.spec.gen.alpha :as gen]
+    [clojure.test.check.generators :as check-gen]
+    #?(:cljs ["/electre/common/big.js" :as big :refer [Big]]) ;;needs shadow-cljs for properly requiring https://shadow-cljs.github.io/docs/UsersGuide.html#_requiring_js
+    #?(:cljs [cljs-bean.core :refer [bean ->clj ->js]])
+    [specy.value :refer [defvalue defvalue2]]
+    [domain.currencies :refer [dissoc-unused-attrs iso->currency]]))
 
 (defn all-currencies []
   (into {}
@@ -52,7 +51,7 @@
 (def USD (get-currency "USD"))
 
 (defn currency-exists? [x]
-  (get all-currencies (cond (string? x) x
+  (get (all-currencies) (cond (string? x) x
                             (:currencyCode x) (:currencyCode x)
                             :else nil)))
 
@@ -67,28 +66,11 @@
 
 (s/def ::iso-code (every-pred string? #(= (count %) 3)))
 
-(defvalue Currency [iso-code ::iso-code
-                    numeric-code pos-int?
-                    display-name string?
-                    symbol string?
-                    fraction-digits int?])
-
-
-(defvalue Amount
-  [qty int?
-   currency Currency]
-  Amountable
-  (qty [this])
-  (add [this other])
-  (subtract [this other])
-  (eq [this other])
-  (currency [amount])
-  (currency-iso-code [amount])
-  (currency-numeric-code [amount])
-  (currency-display-name [amount])
-  (currency-symbol [amount])
-  (currency-fraction-digits [amount]))
-
+(defvalue2 Currency {:iso-code ::iso-code
+                     :numeric-code pos-int?
+                     :display-name string?
+                     :symbol string?
+                     :fraction-digits int?})
 
 ;; => constructor, protocol
 
@@ -97,37 +79,38 @@
           (str "Amount have two different currencies (should be the same): " (currency amount)
                " and " (currency other))))
 
-(extend-type Amount
-  Amountable
-  (to-string [amount]
-    (str qty " " (:currencyCode currency)))
-  (qty [this] qty)
-  (add [amount other]
-    (assert-same-currency amount other)
-    (->Amount (compatible-add qty (:qty other)) currency))
-  (subtract [amount other]
-    (assert-same-currency amount other)
-    (->Amount (compatible-subtract qty (:qty other)) currency))
+(defvalue2 Amount {:qty      int?
+                   :currency Currency?}
+  (to-string [this]
+    (str (:qty this) " " (:currencyCode currency)))
+  (qty [this] (:qty amount))
+  (add [this other]
+    (assert-same-currency this other)
+    (->Amount (compatible-add (:qty this) (:qty other)) (:currency this)))
+  (subtract [this other]
+    (assert-same-currency this other)
+    (->Amount (compatible-subtract (:qty this) (:qty other)) (:currency this)))
   (eq [this other]
-    (and (.equals qty (:qty other)) (= currency (:currency other)))
+    (and (.equals (:qty this) (:qty other)) (= (:currency this) (:currency other)))
                                         ;#?(:cljs (and (.eq qty (:qty other)) (= currency (:currency other))))
     )
-  (currency [this] currency)
-  (currency-iso-code [this] (:currencyCode currency))
-  (currency-numeric-code [amount] (:numericCode currency))
-  (currency-display-name [amount] (:displayName currency))
-  (currency-symbol [amount] (:symbol currency))
-  (currency-fraction-digits [amount] (:defaultFractionDigits currency)))
+  (currency [this] (:currency this))
+  (currency-iso-code [this] (:currencyCode (:currency this)))
+  (currency-numeric-code [amount] (:numericCode (:currency this)))
+  (currency-display-name [amount] (:displayName (:currency this)))
+  (currency-symbol [amount] (:symbol (:currency this)))
+  (currency-fraction-digits [amount] (:defaultFractionDigits (:currency this))))
 
 (defn- currency-from-arg [x]
   (when x
     (if (string? x)
       (do (s/assert currency-exists? x)
           (get-currency x))
-      #?(:clj (if (instance? Currency x) (dissoc-unused-attrs (bean x)) x))
+      #?(:clj (if (instance? Currency x) (dissoc-unused-attrs (bean x)) x)
+         )
       #?(:cljs x))))
 
-(defn amount [qty currency-arg]
+(defn ->amount [qty currency-arg]
   (let [currency (currency-from-arg currency-arg)
         qty-bigdec (compatible-bigdec qty (or (:defaultFractionDigits currency) 2))]
     (s/assert ::qty qty-bigdec)

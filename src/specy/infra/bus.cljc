@@ -48,3 +48,4 @@
 (subscribe bus :command (fn [c] (swap! assets assoc (:id c) c) (println "receive command " c)))
 (subscribe bus :query (fn [q] (swap! assets assoc (:id q) q) (println "receive query " q)))
 (subscribe bus :event (fn [e] (swap! assets assoc (:id e) e) (println "receive event " e)))
+(subscribe bus :referential (fn [e] (swap! assets assoc (:id e) e) (println "receive referential " e)))

@@ -28,6 +28,13 @@
        [java.time :refer [Instant ZonedDateTime OffsetDateTime LocalDateTime LocalDate LocalTime ZoneId ZoneOffset]]))
   #?(:clj (:import [java.time Instant ZonedDateTime OffsetDateTime LocalDateTime LocalDate LocalTime ZoneId ZoneOffset])))
 
+(def
+  ^{:arglists '([x])
+    :doc "Return true if x is a Duration"
+    :added "1.0"
+    :static true}
+  duration? (fn ^:static duration? [x] (instance? java.time.Duration x)))
+
 (defn UTC-zoned-date-time? [x]
   (and (instance? ZonedDateTime x)
        (.equals (t/zone "UTC") (t/zone x))))

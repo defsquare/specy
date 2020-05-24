@@ -9,8 +9,7 @@
 
 (defn start-server []
   (listener
-    ["" [["/js/app.js" (as-resource (io/file "public/js/app.js"))] ;; TODO Move to a CDN
-         ["/documentation"
+    ["" [["/documentation"
           (resource
             {:methods
              {:get
