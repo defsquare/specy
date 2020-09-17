@@ -11,6 +11,7 @@
             [specy.infra.repository :refer [building-blocks]]
 
             [spec-tools.data-spec :as ds]
+            [spec-tools.core :as cs]
             [clojure.string :as string]))
 
 (defmacro defentity
@@ -57,22 +58,23 @@
         args (if (string? (first args))
                (next args)
                args)
-        entity-spec (first args)
+        entity-schema-spec (first args)
         operations (rest args)
+        interface (map #(take 2 %) operations)
 
-        fields (map symbol (keys entity-spec))
         ns *ns*
         id (keyword (str ns) (clojure.string/lower-case (str name)))
-        _ (prn (qualified-keyword? id))
-        interface (map #(take 2 %) operations)]
+        ;; TODO fields to be set from both clj-spec and spec-tools
+        ]
     `(do
        (def ~(symbol (str name "-spec")) (ds/spec {:name ~id
-                                                   :spec ~entity-spec}))
+                                                   :spec ~entity-schema-spec}))
 
        (defprotocol ~(symbol (str (string/capitalize name) "Procotol"))
          ~@interface)
 
-       (defrecord ~name [~@fields]
+       (defrecord ~name [~@(->> (keys entity-schema-spec)
+                                (map symbol))]
          ~(symbol (str (string/capitalize name) "Procotol"))
          ~@operations)
 
@@ -80,17 +82,28 @@
          (s/assert* ~(symbol (str name "-spec")) m#)
          (~(symbol (str "map->" name)) m#))
 
-       (let [entity-desc# (merge {:id         ~(keyword (str ns) (clojure.string/lower-case (str name)))
-                                  :name       ~(str name)
-                                  :longname   (clojure.reflect/typename ~name)
-                                  :ns         ~ns           ;;caller ns
-                                  :class      ~name
-                                  :kind       :entity
-                                  :spec       ~(symbol (str name "-spec"))
-                                  :interface  ~interface
-                                  :fields     nil
-                                  :operations ~operations
-                                  :doc        ~doc})]
+       (let [entity-desc# (merge {:id       ~(keyword (str ns) (clojure.string/lower-case (str name)))
+                                  :name     ~(str name)
+                                  :longname (clojure.reflect/typename ~name)
+                                  :ns       ~ns             ;;caller ns
+                                  :class    ~name
+                                  :kind     :entity
+                                  :spec     ~(symbol (str name "-spec"))
+                                  ;:fields     nil
+                                  ;:interface  ~interface
+                                  ;:operations ~operations
+                                  :doc      ~doc})]
          (store! building-blocks entity-desc#)
          (publish! bus entity-desc#)
          entity-desc#))))
+
+(comment
+
+  (defentity2 Toto "coucou" {:id string?}
+              (say [this s] (prn "from Toto : " s)))
+
+  (->Toto 1)
+  (macroexpand '(defentity2 Toto "coucou" {:id string?}
+                            (say [this s] (prn "from Toto : " s))))
+
+  )

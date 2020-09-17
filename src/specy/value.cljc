@@ -97,10 +97,10 @@
                 (next args)
                 args)
          value-spec (first args)
+         operations (rest args)
+         interface (map #(take 2 %) operations)
 
          fields (map symbol (keys value-spec))
-         operations (rest args)
-         methods (map #(take 2 %) operations)
          ns *ns*
          id (keyword (str ns) (clojure.string/lower-case (str name)))]
      `(do
@@ -108,11 +108,11 @@
                                                     :spec ~value-spec}))
 
         (defprotocol ~(symbol (str (string/capitalize name) "Procotol"))
-          ~@methods)
+          ~@interface)
 
         (defrecord ~name [~@fields]
           ~(symbol (str (string/capitalize name) "Procotol"))
-          ~@methods)
+          ~@operations)
         (add-valuable-operations ~name ~(keys value-spec))
 
         (def
@@ -138,3 +138,12 @@
           (store! building-blocks value-desc#)
           (publish! bus value-desc#)
           value-desc#)))))
+
+
+(comment
+  (defvalue2 MyValue "coucou" {:id string?}
+             (say [this s] (prn "from myValue : " s)))
+
+  (say (->myvalue {:id "coucou"}) "coucou" )
+
+  )

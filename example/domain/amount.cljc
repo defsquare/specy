@@ -83,7 +83,7 @@
                    :currency Currency?}
   (to-string [this]
     (str (:qty this) " " (:currencyCode currency)))
-  (qty [this] (:qty amount))
+  (qty [this] (:qty this))
   (add [this other]
     (assert-same-currency this other)
     (->Amount (compatible-add (:qty this) (:qty other)) (:currency this)))
@@ -96,10 +96,10 @@
     )
   (currency [this] (:currency this))
   (currency-iso-code [this] (:currencyCode (:currency this)))
-  (currency-numeric-code [amount] (:numericCode (:currency this)))
-  (currency-display-name [amount] (:displayName (:currency this)))
-  (currency-symbol [amount] (:symbol (:currency this)))
-  (currency-fraction-digits [amount] (:defaultFractionDigits (:currency this))))
+  (currency-numeric-code [this] (:numericCode (:currency this)))
+  (currency-display-name [this] (:displayName (:currency this)))
+  (currency-symbol [this] (:symbol (:currency this)))
+  (currency-fraction-digits [this] (:defaultFractionDigits (:currency this))))
 
 (defn- currency-from-arg [x]
   (when x
