@@ -4,7 +4,23 @@
             [specy.validation :as sv]
             [specy.protocols :refer [store!]]
             [specy.infra.repository :refer [building-blocks]]
-            [specy.registry :as sr]))
+            [specy.registry :as sr]
+
+            [spec-tools.data-spec :as ds]
+            [spec-tools.core :as cs]
+            [clojure.string :as string]
+            [malli.core :as mc]
+            [malli.generator :as mg]
+            [malli.core :as m]
+            [malli.util :as mu]
+            [malli.error :as me]))
+
+(defn assert-schema [schema data]
+  (if (mc/validate schema data)
+    data
+    (let [explain (mc/explain schema data)]
+      (throw (ex-info (str "Not conform to schema :\n" (me/humanize explain) "")
+                      explain)))))
 
 (defmacro defentity
   "(defentity entity-name schema options & behaviors) where options is a map with

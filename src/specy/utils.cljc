@@ -32,9 +32,9 @@
           ;if opts? is a coll then it is considered present, otherwise it's a symbol representing the next field name that must be kept for the next iteration
           remainings-fields (if (coll? opts?) remainings-fields (cons opts? remainings-fields))
           acc (conj acc (merge {:field field-name
-                            :field-name (str field-name)
-                            :ref x
-                            :kind kind} (when (coll? opts?) {:opts opts?})))]
+                                :field-name (str field-name)
+                                :ref x
+                                :kind kind} (when (coll? opts?) {:opts opts?})))]
       (if (empty? (filter identity remainings-fields));filter nil in remainings-fields
         acc
         (recur remainings-fields
