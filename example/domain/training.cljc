@@ -1,17 +1,16 @@
 (ns domain.training
-  (:require [specy.value :refer [defvalue defvalue2]]
-            [specy.entity :refer [defentity defentity2]]
+  (:require [specy.value :refer [defvalue]]
+            [specy.entity :refer [defentity]]
             [specy.event :refer [defevent]]
             [specy.command :refer [defcommand]]
             [specy.query :refer [defquery]]
             [specy.rule :refer [defrule]]
             [specy.referential :refer [defreferential defreferential2]]
-            [domain.amount :refer [->amount Amount?]]
+            [domain.amount :refer [->amount-builder Amount?]]
             [specy.time :refer [duration?]]
             [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]
-            [spec-tools.data-spec :as ds]
-            [spec-tools.core :as st])
+            [tick.core :as t])
   (:import
     [java.time Duration LocalDateTime Period]
     [domain.amount Amount]))
@@ -37,34 +36,41 @@
                                  {:code "practice" :name "Practice session"}]
                    :description "Developing software "}])
 
-(defentity2 Instructor "An instructor" {:id     uuid?
-                                        :name   string?
-                                        :skills [keyword?]})
+(defentity Instructor [:map
+                       [:id uuid?]
+                       [:name string?]
+                       [:skills [:vector keyword?]]]
+           {:doc "An instructor"})
 
-(defentity2 Training {:id       uuid?
-                      :name     string?
-                      :content  string?
-                      :duration duration?
-                      :price    Amount?})
+(defentity Training [:map
+                     [:id uuid?]
+                     [:name string?]
+                     [:content string?]
+                     [:duration [:and {:gen/elements [(t/new-duration 1 :seconds)]} [:fn duration?]] ]
+                     [:price [:fn Amount?]]]
+           {:doc ""})
 
 (s/def ::skill-id uuid?)
 (s/def ::instructor-id uuid?)
 (s/def ::add-skill-to-instructor-payload (s/keys :req-un [::skill-id ::instructor-id]))
 
-(defcommand ::add-skill-to-instructor
-            ::add-skill-to-instructor-payload
-            {:doc     "Add a skill to an instructor"
-             :rely-on Instructor})
+(defcommand add-skill-to-instructor
+            [:map
+             [:skill-id uuid?]
+             [:instructor-id uuid?]]
+            {:doc     "Add a skill to an instructor"})
 
 (s/def ::find-instructors-with-skill-payload (s/keys :req-un [::skill-id]))
-(defquery ::find-instructors-with-skill ::find-instructors-with-skill-payload
-          {:doc     "Find an instructor with a specific skill"
-           :rely-on Instructor})
+(defquery find-instructors-with-skill
+          [:map
+           [:skill-id uuid?]]
+          {:doc     "Find an instructor with a specific skill"})
 
 (s/def ::instructors-with-skill-found-payload (s/coll-of ::instructor-id))
-(defevent ::instructors-with-skill-found ::instructors-with-skill-found-payload
-          {:doc     "List of instructor found with specific skill"
-           :rely-on Instructor})
+(defevent instructors-with-skill-found
+          [:map
+           [:instructor-id uuid?]]
+          {:doc     "List of instructor found with specific skill"})
 
 
 
@@ -81,4 +87,4 @@
                :name     "Clojure in action"
                :content  "Learning Clojure for the brave !"
                :duration (Duration/between (LocalDateTime/of 2020 04 26 8 0 0) (LocalDateTime/of 2020 04 26 11 30 0))
-               :price    (->amount 800 "EUR")}))
+               :price    (->amount-builder 800 "EUR")}))

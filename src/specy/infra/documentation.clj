@@ -1,20 +1,26 @@
 (ns specy.infra.documentation
-  (:require [spec-tools.json-schema :as json-schema]
-            [hiccup.page :refer [include-js include-css]]
-            [cheshire.core :as csc]
-            [specy.infra.bus :refer [assets]]))
+  (:require                                                 ;[spec-tools.json-schema :as json-schema]
+    [hiccup.page :refer [include-js include-css]]
+    [cheshire.core :as csc]
+    [specy.infra.bus :refer [assets]]
+    [malli.json-schema :as json-schema]))
 
-(defmethod json-schema/accept-spec 'specy.time/duration? [_ _ _ _] {:type "java.time.Duration"})
-(defmethod json-schema/accept-spec 'domain.amount/Currency? [_ _ _ _] {:type "domain.amount.Currency"})
-(defmethod json-schema/accept-spec 'domain.amount/Amount? [_ _ _ _] {:type "domain.amount.Amount"})
+;(defmethod json-schema/accept-spec 'specy.time/duration? [_ _ _ _] {:type "java.time.Duration"})
+;(defmethod json-schema/accept-spec 'domain.amount/Currency? [_ _ _ _] {:type "domain.amount.Currency"})
+;(defmethod json-schema/accept-spec 'domain.amount/Amount? [_ _ _ _] {:type "domain.amount.Amount"})
 
-(defn asset->asset-doc [{:keys [name longname kind spec doc rely-on] :as asset}]
+(comment
+  (remove-ns 'specy.infra.documentation)
+
+
+  (json-schema/transform (:schema (get @assets :domain.training/training))))
+(defn asset->asset-doc [{:keys [name longname kind schema doc rely-on] :as asset}]
   (cond-> {:name     name
            :longname longname
            :kind     kind}
           doc (assoc :doc doc)
           rely-on (assoc :rely-on (some-> rely-on clojure.reflect/typename))
-          spec (assoc :schema (json-schema/transform spec))))
+          schema (assoc :schema (json-schema/transform schema))))
 
 (defn generate []
   (hiccup.core/html [:html

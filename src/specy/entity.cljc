@@ -12,98 +12,95 @@
 
             [spec-tools.data-spec :as ds]
             [spec-tools.core :as cs]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [malli.core :as mc]
+            [malli.generator :as mg]
+            [malli.core :as m]
+            [malli.util :as mu]
+            [malli.error :as me]))
+
+(defn assert-schema [schema data]
+  (if (mc/validate schema data)
+    data
+    (let [explain (mc/explain schema data)]
+      (throw (ex-info (str "Not conform to schema :\n" (me/humanize explain) "")
+                      explain)))))
 
 (defmacro defentity
-  "(defentity name [fields*] protocol-name [operations*] options*) "
-  {:arglists '([name [& fields] & opts+specs])}
-  ([name fields & opts+specs]
-   (let [inspected-fields (inspect building-blocks fields)
-         fields-name (map :field inspected-fields)
-         [interfaces methods opts] (parse-opts+specs opts+specs)
-         operations (operations methods)
-         ns *ns*]
-     `(do
-        ~(if (not-empty opts+specs)
-           `(do
-              (defprotocol ~@opts+specs)
-              (defrecord ~name [~@fields-name] ~(first opts+specs)))
-           `(defrecord ~name [~@fields-name]))
-        ;;TODO create the repository interface associated to that entity ? or build a defrepository macro ?
-        (let [entity-desc# (merge {:id         ~(keyword (str ns) (clojure.string/lower-case (str name)))
-                                   :name       ~(str name)
-                                   :longname   (clojure.reflect/typename ~name)
-                                   :ns         ~ns          ;;caller ns
-                                   :class      ~name
-                                   :kind       :entity
-                                   :fields     ~(vec (map #(dissoc % :field) inspected-fields))
-                                   :operations ~operations}
-                                  ~(when (not-empty opts+specs)
-                                     :interface ~(first interfaces)))]
-          ;;TODO create spec associated to the entity
-          (store! building-blocks entity-desc#)
-          (publish! bus entity-desc#)
-          entity-desc#)))))
+  "(defentity entity-name schema options & behaviors) where options is a map with
+       - schema : schema that describes data structure. Can be a map or a ref to a schema
+       - options : {:doc string - the docstring of this entity}
 
+    Behaviors are express as named functions, which takes record instance as first parameter :
+    (fn my-function [] (do stuff here...))
 
+    Usage :
+    (defentity MyEntity
+              {:doc \"Any documentation here\" :schema [:map [:title string?]]}
+              (fn say-it [this word] (str (:title this) \" with \" word)))
 
-(defmacro defentity2
-  "(defentity name doc spec [operations*]) "
-  {:arglists '([name spec & behaviors])}
-  [name & args]
-  (let [;;next lines deal with docstring optionality ...
-        doc (when (string? (first args))
-              (first args))
-        ;;remove docstring from args
-        args (if (string? (first args))
-               (next args)
-               args)
-        entity-schema-spec (first args)
-        operations (rest args)
-        interface (map #(take 2 %) operations)
-
-        ns *ns*
-        id (keyword (str ns) (clojure.string/lower-case (str name)))
-        ;; TODO fields to be set from both clj-spec and spec-tools
-        ]
+    (say-it (->myentity {:title \"hello\"}) \"world\")"
+  {:arglists '([name options & behaviors])}
+  [entity-name schema {:keys [doc] :as options} & behaviors]
+  (let [interface (map #(take 2 (rest %)) behaviors)
+        implementations (map rest behaviors)                ;; TODO should handle function ref
+        props (map first (rest schema))
+        schema-ref-symbol (symbol (str entity-name "-schema"))
+        builder-ref-symbol (symbol (str "->" (string/lower-case entity-name)))
+        ns *ns*]
     `(do
-       (def ~(symbol (str name "-spec")) (ds/spec {:name ~id
-                                                   :spec ~entity-schema-spec}))
+       (def ~schema-ref-symbol ~schema)
 
-       (defprotocol ~(symbol (str (string/capitalize name) "Procotol"))
+       (defprotocol ~(symbol (str (string/capitalize entity-name) "Procotol"))
          ~@interface)
 
-       (defrecord ~name [~@(->> (keys entity-schema-spec)
-                                (map symbol))]
-         ~(symbol (str (string/capitalize name) "Procotol"))
-         ~@operations)
+       (defrecord ~entity-name [~@(map symbol props)]
+         ~(symbol (str (string/capitalize entity-name) "Procotol"))
+         ~@implementations)
 
-       (defn ~(symbol (str "->" (string/lower-case name))) [m#]
-         (s/assert* ~(symbol (str name "-spec")) m#)
-         (~(symbol (str "map->" name)) m#))
+       (defn ~builder-ref-symbol [m#]
+         (assert-schema ~schema-ref-symbol m#)
+         (~(symbol (str "map->" entity-name)) m#))
 
-       (let [entity-desc# (merge {:id       ~(keyword (str ns) (clojure.string/lower-case (str name)))
-                                  :name     ~(str name)
-                                  :longname (clojure.reflect/typename ~name)
-                                  :ns       ~ns             ;;caller ns
-                                  :class    ~name
-                                  :kind     :entity
-                                  :spec     ~(symbol (str name "-spec"))
-                                  ;:fields     nil
-                                  ;:interface  ~interface
-                                  ;:operations ~operations
-                                  :doc      ~doc})]
+       (def
+         ^{:doc    ~(str "Return true if x is a " name)
+           :static true}
+         ~(symbol (str entity-name "?")) (fn ^:static ~(symbol (str entity-name "?")) [x#] (instance? ~entity-name x#)))
+
+       (let [entity-desc# (array-map
+                            :id ~(keyword (str ns) (clojure.string/lower-case (str entity-name)))
+                            :name ~(str entity-name)
+                            :longname (clojure.reflect/typename ~entity-name)
+                            :doc ~doc
+                            :ns ~ns                       ;;caller ns
+                            :class ~entity-name
+                            :kind :entity
+                            :schema-ref (quote ~schema-ref-symbol)
+                            :schema ~schema
+                            :validation-fn (quote ~(symbol (str ns "/" entity-name "?")))
+                            :props (quote ~props)
+                            :builder (quote ~(symbol (str "(" ns "/" builder-ref-symbol " " (->> props (map (fn [e] [e '...])) (into {})) ")"))))]
          (store! building-blocks entity-desc#)
          (publish! bus entity-desc#)
          entity-desc#))))
 
 (comment
 
-  (defentity2 Toto "coucou" {:id string?}
-              (say [this s] (prn "from Toto : " s)))
+  (macroexpand-1 '(defentity MyEntity
+                             {:title {:required? true} string?
+                                     :name string?
+                              }
+                             [:map
+                              [:title string?]
+                              [:price Amount]]
+                             {:doc "Any documentation here"}
+                             ;(fn say-it [this word] (str (:title this) " with " word))
+                             ))
 
-  (->Toto 1)
-  (macroexpand '(defentity2 Toto "coucou" {:id string?}
-                            (say [this s] (prn "from Toto : " s))))
+  (say-it (->myentity {:title "hello"}) "world")
+
+  (say (specy.entity/->notice {:id 1, :ean "12134"}) "coucou")
+
+
 
   )

@@ -15,7 +15,7 @@
            org.clojure/test.check              {:mvn/version "0.10.0"}
 
            metosin/spec-tools                  {:mvn/version "0.10.1"}
-           }
+           metosin/malli                       {:mvn/version "0.2.1"}}
  :aliases {:artifact-name {:extra-deps {metav
                                         ; {:mvn/version "1.6.1"}
                                         {:local/root "../metav"}

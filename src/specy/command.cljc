@@ -11,87 +11,89 @@
             [specy.protocols :refer :all]
             [specy.infra.bus :refer [bus]]
             [specy.infra.repository :refer [building-blocks]]
-            [specy.utils :refer [inspect operations parse-opts+specs]]))
+            [specy.utils :refer [inspect operations parse-opts+specs]]
+            [malli
+             [core :as mc]
+             [generator :as mg]
+             [util :as mu]
+             [error :as me]]
+            [clojure.string :as string]))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Command Spec                                   ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(def metadata-schema [:map
+                      [:id uuid?]
+                      [:type keyword?]
+                      [:issued-at [:and {:gen/elements [(t/instant)]} [:fn time/instant?]]] ;; FIXME by using :instance instead, (PR https://github.com/metosin/malli/pull/176)
+                      [:correlation-id string?]])
 
-(defmulti command-type :command-type)
-(s/def ::comand (s/multi-spec command-type :command-type))
-
-;;command are implemented in domain project like:
-;;  (defmethod command-type ::create-organization-command [_]
-;;    (s/keys :req-un [::organization ::command]))
-;; ::command spec took one of the command define with the multimethod
-
-(s/def ::command-type keyword?)
-(s/def ::command-id uuid?)
-(s/def ::correlation-id uuid?)
-(s/def ::org-ref string?)
-(s/def ::issued-at ::time/instant)
-(s/def ::issued-by string?)
-(s/def ::received-at ::time/instant)
-(s/def ::source string?)
-(s/def ::container string?)
-
-(s/def ::command-metadata (s/keys :req-un [::command-type ::command-id ::org-ref ::issued-at ::issued-by]
-                                  :opt-un [::source ::container]))
-
-(defn command-meta-gen
-  "command metadata generator with fixed command-type"
-  [command-type]
-  (check-gen/let [command-type (check-gen/return command-type)
-                  command-id (s/gen ::command-id)
-                  org-ref (s/gen ::org-ref)
-                  issued-at (check-gen/one-of [(check-gen/return (t/now)) (s/gen ::issued-at)])
-                  issued-by (s/gen ::issued-by)
-                  source (s/gen ::source)
-                  container (s/gen ::container)]
-                 (create-map command-type command-id org-ref issued-at issued-by source container)))
-
-(defn command-metadata [{:keys [command-id command-type issued-at correlation-id] :as metadata}]
-  (merge {:command-id     (or command-id (uuid/random))
+(defn ->metadata [{:keys [id type issued-at correlation-id] :as metadata}]
+  (merge {:id             (or id (uuid/random))
+          :type           type
           :issued-at      (or issued-at (t/instant))
-          :correlation-id (or correlation-id (uuid/random))} metadata))
+          :correlation-id (or correlation-id (uuid/random))}
+         metadata))
+
+(defn assert-schema [schema data]
+  (if (mc/validate schema data)
+    data
+    (let [explain (mc/explain schema data)]
+      (throw (ex-info (str "Not conform to schema :\n" (me/humanize explain) "")
+                      explain)))))
 
 (defmacro defcommand
-  "define a command with first arg the ns keyword of the command then the ns keyword of the spec"
-  [cmdk datak & options]
-  (let [options (first options)
-        ns *ns*]
-    `(do (s/def ~cmdk
-           (s/with-gen (s/merge ::command-metadata (s/keys :req-un [~datak]))
-                       #(gen/fmap (fn [[command-meta# data#]]
-                                    (assoc command-meta# (keyword (name ~datak)) data#))
-                                  (gen/tuple (command-meta-gen ~cmdk) (s/gen ~datak)))))
-         (defmethod command-type ~cmdk [_#] (s/get-spec ~cmdk))
+  "(defcommand command-name schema options) where options is a map with :
+      - schema : schema that describes data structure. Can be a map or a ref to a schema
+      - options : {:doc string - the docstring of this entity}
 
-         (defn ~(symbol (str "->" (name cmdk)))
-           ~(str "Create a command of type " cmdk " with metadata (complementing the missing optional data, only :org-ref and :issued-by are mandatory keys in metadata) and data " datak) [metadata# data#]
-           (let [merged-metadata# (command-metadata (assoc metadata# :command-type ~cmdk))]
-             (s/assert* ::command-metadata merged-metadata#)
-             (s/assert* ~datak data#)
-             (assoc merged-metadata# (keyword (name ~datak)) data#)))
+    Usage :
+    (defcommand my-command [:map [:title string?]] {:doc \"Any documentation here\"})"
+  [command-name schema {:keys [doc] :as options}]
+  (let [ns *ns*
+        metadata-props (map first (rest metadata-schema))
+        props (map first (rest schema))
+        schema-ref-symbol (symbol (str command-name "-schema"))
+        builder-ref-symbol (symbol (str "->" (name command-name)))]
+    `(do
 
-         (defn ~(symbol (str (name cmdk) "-gen")) ~(str "Return a generator for the command type " cmdk " and data " datak) []
-           (check-gen/let [meta# (command-meta-gen ~cmdk)
-                           data# (s/gen ~datak)]
-                          (assoc meta# (keyword (name ~datak)) data#)))
+       (def ~schema-ref-symbol
+         (mu/merge metadata-schema
+                   [:map
+                    [:payload ~schema]]))
 
-         (let [command-desc# {:name     ~(name cmdk)
-                            :longname (clojure.reflect/typename (symbol ~cmdk))
-                            :ns       ~ns                   ;;caller ns
-                            :id       ~cmdk
-                            :kind     :command
-                            :spec     ~cmdk
-                            :rely-on  ~(get options :rely-on)
-                            :doc      ~(:doc options)}]
-           (store! building-blocks command-desc#)
-           (publish! bus command-desc#)
-           command-desc#))))
+       (defn ~builder-ref-symbol
+         ~(str "Create a command of type ")
+         [metadata# data#]
+         (assert-schema ~schema-ref-symbol (assoc (->metadata metadata#) :payload data#)))
 
-(defn commands "return all the commands declared in scope" []
-  (-> command-type methods keys set))
+       (let [command-desc# (array-map
+                             :id ~(keyword (str ns) (clojure.string/lower-case (str command-name)))
+                             :name ~(str command-name)
+                             ;:longname (clojure.reflect/typename ~command-name)
+                             :doc ~doc
+                             :ns ~ns                       ;;caller ns
+                             :kind :command
+                             :schema-ref (quote ~schema-ref-symbol)
+                             :schema ~schema-ref-symbol
+                             :builder (quote ~(symbol (str "("
+                                                           ns "/" builder-ref-symbol " "
+                                                           (->> metadata-props (map (fn [e] [e '...])) (into {}))
+                                                           (->> props (map (fn [e] [e '...])) (into {}))
+                                                           ")"))))]
+         (store! building-blocks command-desc#)
+         (publish! bus command-desc#)
+         command-desc#))))
 
 
+(comment
+
+  (macroexpand-1 '(defcommand add-title
+                               [:map [:title string?]]
+                               {:doc "Any documentation here"}))
+
+  (defcommand my-command
+               [:map [:title string?]]
+               {:doc "Any documentation here"})
+  (mg/generate add-title-schema)
+  (:builder (defcommand add-title
+                         [:map [:title string?]]
+                         {:doc "Any documentation here"}))
+  )

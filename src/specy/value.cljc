@@ -10,12 +10,12 @@
             [specy.infra.repository :refer [building-blocks]]
             [specy.utils :refer [inspect operations parse-opts+specs]]
             [clojure.string :as string]
-            [spec-tools.data-spec :as ds]))
-
-(defmacro doseq-macro
-  [macroname & args]
-  `(do
-     ~@(map (fn [arg] (list macroname arg)) args)))
+            [spec-tools.data-spec :as ds]
+            [malli
+             [core :as mc]
+             [generator :as mg]
+             [util :as mu]
+             [error :as me]]))
 
 (defmacro add-valuable-operations [name fields]
   (let [sb (gensym 'sb)
@@ -30,120 +30,83 @@
                            (interpose :space fields))
                     (.toString ~sb))))))
 
-
-(comment
-  (macroexpand '(defvalue2 MyValue {:id string? :foo string?}
-                           (from-string [this] (get this :id))))
-
-
-  (defvalue2 MyValue {:id string? :foo string?}
-             (from-string [this] (get this :id)))
-  (to-string (->myvalue {:id "lol" :foo "bar"}))
-  )
+(defn assert-schema [schema data]
+  (if (mc/validate schema data)
+    data
+    (let [explain (mc/explain schema data)]
+      (throw (ex-info (str "Not conform to schema :\n" (me/humanize explain) "")
+                      explain)))))
 
 (defmacro defvalue
-  "(defvalue name docstring? [fields*] protocol-name [operations*] options*) "
-  {:arglists '([name docstring? [& fields] & opts+specs])}
-  ([name & args]
-   (let [
-         ;;next lines deal with docstring optionality ...
-         m (if (string? (first args))
-             {:doc (first args)}
-             {})
-         ;;remove docstring from args
-         args (if (string? (first args))
-                (next args)
-                args)
-         fields (when (vector? (first args)) (first args))
-         opts+specs (rest args)
+  "(defvalue value-name schema options & behaviors) where options is a map with
+      - schema : schema that describes data structure. Can be a map or a ref to a schem
+      - options : {:doc string - the docstring of this entity}
 
-         inspected-fields (inspect building-blocks fields)
-         fields-name (map :field inspected-fields)
-         [interfaces methods opts] (parse-opts+specs opts+specs)
-         operations (operations methods)
-         ns *ns*]
-     `(do
-        ~(if (not-empty opts+specs)
-           `(defprotocol ~@opts+specs)
-           `(defprotocol ~(symbol (str name "able"))))
-        (defrecord ~name [~@fields-name])                   ;~(if (not-empty opts+specs) (first opts+specs) (symbol (str name "able")))
-        (add-valuable-operations ~name ~fields-name)
-        ;;return the value as a data structure
-        (let [value-desc# {:name       ~(str name)
-                           :longname   (clojure.reflect/typename ~name)
-                           :ns         ~ns                  ;;caller ns
-                           :id         ~(keyword (str ns) (clojure.string/lower-case (str name)))
-                           :class      ~name
-                           :kind       :value
-                           :fields     ~(vec (map #(dissoc % :field) inspected-fields))
-                           :interface  ~(first interfaces)
-                           :operations ~operations
-                           :doc        ~(:doc m)
-                           }]
-          (store! building-blocks value-desc#)
-          (publish! bus value-desc#)
-          value-desc#)))))
+    Behaviors are express as named functions, which takes record instance as first parameter :
+    (fn my-function [] (do stuff here...))
 
-(defmacro defvalue2
-  "(defvalue name docstring? spec operations*) "
-  {:arglists '([name value-spec & operations])}
-  ([name & args]
-   (let [
-         ;;next lines deal with docstring optionality ...
-         doc (when (string? (first args))
-             (first args))
-         ;;remove docstring from args
-         args (if (string? (first args))
-                (next args)
-                args)
-         value-spec (first args)
-         operations (rest args)
-         interface (map #(take 2 %) operations)
+    Usage :
+    (defvalue MyValue
+              {:doc \"Any documentation here\" :schema [:map [:title string?]]}
+              (fn say-it [this word] (str (:title this) \" with \" word)))
 
-         fields (map symbol (keys value-spec))
-         ns *ns*
-         id (keyword (str ns) (clojure.string/lower-case (str name)))]
-     `(do
-        (def ~(symbol (str name "-spec")) (ds/spec {:name ~id
-                                                    :spec ~value-spec}))
+    (say-it (->myvalue {:title \"hello\"}) \"world\")"
+  {:arglists '([name schema options & behaviors])}
+  [value-name schema {:keys [doc] :as options} & behaviors]
+  (let [interface (some->> (seq behaviors) (map #(take 2 (rest %))))
+        implementations (some->> (seq behaviors) (map rest)) ;; TODO should handle function ref
+        props (map first (rest schema))
+        protocol-ref-symbol (symbol (str (string/capitalize value-name) "Procotol"))
+        schema-ref-symbol (symbol (str value-name "-schema"))
+        builder-ref-symbol (symbol (str "->" (string/lower-case value-name)))
+        ns *ns*]
+    `(do
+       (def ~schema-ref-symbol ~schema)
 
-        (defprotocol ~(symbol (str (string/capitalize name) "Procotol"))
-          ~@interface)
+       (defprotocol ~protocol-ref-symbol
+         ~@interface)
 
-        (defrecord ~name [~@fields]
-          ~(symbol (str (string/capitalize name) "Procotol"))
-          ~@operations)
-        (add-valuable-operations ~name ~(keys value-spec))
+       (defrecord ~value-name [~@(map symbol props)]
+         ~protocol-ref-symbol
+         ~@implementations)
 
-        (def
-          ^{:doc    ~(str "Return true if x is a " name)
-            :static true}
-          ~(symbol (str name "?")) (fn ^:static ~(symbol (str name "?")) [x#] (instance? ~name x#)))
+       (defn ~builder-ref-symbol [m#]
+         (assert-schema ~schema-ref-symbol m#)
+         (~(symbol (str "map->" value-name)) m#))
 
-        (defn ~(symbol (str "->" (string/lower-case name))) [m#]
-          (s/assert* ~(symbol (str name "-spec")) m#)
-          (~(symbol (str "map->" name)) m#))
+       (def
+         ^{:doc    ~(str "Return true if x is a " name)
+           :static true}
+         ~(symbol (str value-name "?")) (fn ^:static ~(symbol (str value-name "?")) [x#] (instance? ~value-name x#)))
 
-        ;;return the value as a data structure
-        (let [value-desc# {:id         ~id
-                           :name       ~(str name)
-                           :longname   (clojure.reflect/typename ~name)
-                           :ns         ~ns                  ;;caller ns
-                           :class      ~name
-                           :kind       :value
-                           :spec       ~(symbol (str name "-spec"))
-                           ;:interface  ~(first interfaces)
-                           ;:operations ~operations
-                           :doc        ~doc}]
-          (store! building-blocks value-desc#)
-          (publish! bus value-desc#)
-          value-desc#)))))
-
+       (let [value-desc# (array-map
+                           :id ~(keyword (str ns) (clojure.string/lower-case (str value-name)))
+                           :name ~(str value-name)
+                           :longname (clojure.reflect/typename ~value-name)
+                           :doc ~doc
+                           :ns ~ns                          ;;caller ns
+                           :class ~value-name
+                           :kind :value
+                           :schema-ref (quote ~schema-ref-symbol)
+                           :schema ~schema
+                           :validation-fn (quote ~(symbol (str ns "/" value-name "?")))
+                           :props (quote ~props)
+                           :builder (quote ~(symbol (str "(" ns "/" builder-ref-symbol " " (->> props (map (fn [e] [e '...])) (into {})) ")"))))]
+         (store! building-blocks value-desc#)
+         (publish! bus value-desc#)
+         value-desc#))))
 
 (comment
-  (defvalue2 MyValue "coucou" {:id string?}
-             (say [this s] (prn "from myValue : " s)))
 
-  (say (->myvalue {:id "coucou"}) "coucou" )
+  (defvalue MyValue
+            [:map [:title string?]]
+            {:doc "Any documentation here"}
+            ;(fn say-it [this word] (str (:title this) " with " word))
+            )
+
+  (defrecord Toto [title])
+  (specy.value/MyValue? (->myvalue {:title "hello"}))
+
+  (say (specy.value/->notice {:id 1, :ean "12134"}) "coucou")
 
   )
