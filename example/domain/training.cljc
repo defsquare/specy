@@ -50,6 +50,19 @@
                      [:price [:fn Amount?]]]
            {:doc ""})
 
+(defentity Instructor
+  [[id {:unique true} uuid?]
+   [name string?]
+   [skills Skill]]
+  (validate []))
+
+(config-adapter Instructor
+                [name {:filterable? false}]
+                [skills {:cardinality :multiple :queryable? true :filterable? true}]
+                (get [instructor])
+                (store [instructor])
+  )
+
 (s/def ::skill-id uuid?)
 (s/def ::instructor-id uuid?)
 (s/def ::add-skill-to-instructor-payload (s/keys :req-un [::skill-id ::instructor-id]))

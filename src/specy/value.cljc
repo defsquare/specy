@@ -20,6 +20,18 @@
                            (interpose :space fields))
                     (.toString ~sb))))))
 
+(defn assert-schema [schema data]
+  (if (mc/validate schema data)
+    data
+    (let [explain (mc/explain schema data)]
+      (throw (ex-info (str "Not conform to schema :\n" (me/humanize explain) "")
+                      explain)))))
+
+(defn- get-fields [args]
+  ;;reduce until  
+
+  )
+
 (defmacro defvalue
   "(defvalue value-name schema options & behaviors) where options is a map with
       - schema : schema that describes data structure. Can be a map or a ref to a schem

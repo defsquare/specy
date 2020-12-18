@@ -74,6 +74,51 @@
                     [:fraction-digits int?]]
           {:doc ""})
 
+(comment 
+  (defvalue Currency [iso-code ::iso-code
+                      numeric-code pos-int?
+                      display-name string?
+                      symbol string?
+                      fraction-digits int?]))
+
+
+(defvalue Amount
+  [qty int?
+   currency Currency]
+  Amountable
+  (qty [this])
+  (add [this other])
+  (subtract [this other])
+  (eq [this other])
+  (currency [amount])
+  (currency-iso-code [amount])
+  (currency-numeric-code [amount])
+  (currency-display-name [amount])
+  (currency-symbol [amount])
+  (currency-fraction-digits [amount]))
+
+(defvalue Currency
+  [iso-code ::iso-code]
+  [numeric-code post-int?]
+  [display-name string?]
+  [symbol string?]
+  [fraction-digits int?])
+
+(defvalue Amount
+  [qty int?]
+  [currency Currency]
+  Amountable
+  (qty [this])
+  (add [this other])
+  (subtract [this other])
+  (eq [this other])
+  (currency [amount])
+  (currency-iso-code [amount])
+  (currency-numeric-code [amount])
+  (currency-display-name [amount])
+  (currency-symbol [amount])
+  (currency-fraction-digits [amount]))
+
 ;; => constructor, protocol
 
 (defn assert-same-currency [amount other]

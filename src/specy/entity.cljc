@@ -84,3 +84,24 @@
                        (str "Should be an instance of " ~entity-name))
          (store! building-blocks entity-desc#)
          entity-desc#))))
+
+(comment
+
+  (macroexpand-1 '(defentity MyEntity
+                             [:title {:required? true} string?
+                              :name string?
+                              ]
+                             [:map
+                              [:title string?]
+                              [:price Amount]]
+                             {:doc "Any documentation here"}
+                             ;(fn say-it [this word] (str (:title this) " with " word))
+                             ))
+
+  (say-it (->myentity {:title "hello"}) "world")
+
+  (say (specy.entity/->notice {:id 1, :ean "12134"}) "coucou")
+
+
+
+  )
