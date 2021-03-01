@@ -37,7 +37,7 @@
         ;;return the value as a data structure
         (def ~name ~pred)
         (let [rule-desc# {:name           ~(str name)
-                          :ns             ~ns ;;caller ns
+                          :ns             ~(str ns)
                           :id             ~(keyword (str ns) (clojure.string/lower-case (str name)))
                           :fn             ~pred
                           :building-block ~(:building-block m)

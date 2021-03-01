@@ -1,42 +1,29 @@
 (ns specy.query
-  (:require [#?(:clj  clojure.spec.gen.alpha
-                :cljs cljs.spec.gen.alpha) :as gen]
-            [#?(:clj  clojure.spec.alpha
-                :cljs cljs.spec.alpha) :as s]
-            [clojure.test.check.generators :as check-gen]
-            [tick.alpha.api :as t]
-            [specy.time :as time]
+  (:require [tick.alpha.api :as t]
+            [malli.util :as mu]
             [specy.uuid :as uuid]
-            [specy.utils :refer [create-map]]
-            [specy.protocols :refer :all]
-            [specy.infra.bus :refer [bus]]
-            [specy.infra.repository :refer [building-blocks]]
-            [specy.utils :refer [inspect operations parse-opts+specs]]
-            [malli
-             [core :as mc]
-             [generator :as mg]
-             [util :as mu]
-             [error :as me]]))
+            [specy.validation :as sv]
+            [specy.time :as time]
+            [specy.protocols :refer [store!]]
+            [specy.infra.repository :refer [building-blocks]])
+  #?(:cljs (:require-macros [specy.query])))
 
 (def metadata-schema [:map
                       [:id uuid?]
                       [:type keyword?]
                       [:issued-at [:and {:gen/elements [(t/instant)]} [:fn time/instant?]]] ;; FIXME by using :instance instead, (PR https://github.com/metosin/malli/pull/176)
-                      [:correlation-id string?]])
+                      [:issued-by any?]
+                      [:correlation-id uuid?]])
 
-(defn ->metadata [{:keys [id type issued-at correlation-id] :as metadata}]
-  (merge {:id             (or id (uuid/random))
-          :type           type
-          :issued-at      (or issued-at (t/instant))
-          :correlation-id (or correlation-id (uuid/random))}
-         metadata))
+(defn ->metadata [{:keys [id issued-at issued-by correlation-id from-event meta] :as metadata}]
+  (cond-> {:id             (or id (uuid/random))
+           :issued-at      (or issued-at (t/instant))
+           :issued-by      (or issued-by (:published-by from-event))
+           :correlation-id (or correlation-id (:correlation-id from-event) (uuid/random))}
+          meta (assoc :meta meta)))
 
-(defn assert-schema [schema data]
-  (if (mc/validate schema data)
-    data
-    (let [explain (mc/explain schema data)]
-      (throw (ex-info (str "Not conform to schema :\n" (me/humanize explain) "")
-                      explain)))))
+(defn- print-metadata-builder [m] (->> m (filter (partial not= :type)) (map (fn [e] [e nil])) (into {})))
+(defn- print-payload-builder [m] (->> m (map (fn [e] [e nil])) (into {})))
 
 (defmacro defquery
   "(defquery query-name schema options) where options is a map with :
@@ -52,33 +39,44 @@
         schema-ref-symbol (symbol (str query-name "-schema"))
         builder-ref-symbol (symbol (str "->" (name query-name)))]
     `(do
-
        (def ~schema-ref-symbol
          (mu/merge metadata-schema
                    [:map
                     [:payload ~schema]]))
 
+       (defn
+         ^{:doc    ~(str "Validate data from schema " schema-ref-symbol)
+           :static true}
+         ~(symbol (str query-name "?")) [query#] (sv/valid? ~schema-ref-symbol query#))
+
        (defn ~builder-ref-symbol
          ~(str "Create a query of type ")
          [metadata# data#]
-         (assert-schema ~schema-ref-symbol (assoc (->metadata metadata#) :payload data#)))
+         (sv/assert-schema ~schema-ref-symbol (assoc (->metadata metadata#)
+                                             :type ~(keyword (str ns) (clojure.string/lower-case (str query-name)))
+                                             :payload data#)))
 
        (let [query-desc# (array-map
-                           :id ~(keyword (str ns) (clojure.string/lower-case (str query-name)))
-                           :name ~(str query-name)
-                           ;:longname (clojure.reflect/typename ~query-name)
-                           :doc ~doc
-                           :ns ~ns                        ;;caller ns
-                           :kind :query
-                           :schema-ref (quote ~schema-ref-symbol)
-                           :schema ~schema-ref-symbol
-                           :builder (quote ~(symbol (str "("
-                                                         ns "/" builder-ref-symbol " "
-                                                         (->> metadata-props (map (fn [e] [e '...])) (into {}))
-                                                         (->> props (map (fn [e] [e '...])) (into {}))
-                                                         ")"))))]
+                              :id ~(keyword (str ns) (clojure.string/lower-case (str query-name)))
+                              :name ~(str query-name)
+                              :ns  ~(str ns)
+                              ;:longname (clojure.reflect/typename ~query-name)
+                              :doc ~doc
+                              :kind :query
+                              :schema-ref (quote ~schema-ref-symbol)
+                              :schema ~schema-ref-symbol
+                              :validation-fn (quote ~(symbol (str "(" ns "/" query-name "? query)")))
+                              :builder (quote ~(symbol (str "("
+                                                            ns "/" builder-ref-symbol " "
+                                                            (print-metadata-builder metadata-props)
+                                                            (print-payload-builder props)
+                                                            ")")))
+                              :builder-from-event (quote ~(symbol (str "("
+                                                                       ns "/" builder-ref-symbol " "
+                                                                       "{:from-event event}"
+                                                                       (print-payload-builder props)
+                                                                       ")"))))]
          (store! building-blocks query-desc#)
-         (publish! bus query-desc#)
          query-desc#))))
 
 

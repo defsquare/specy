@@ -70,9 +70,9 @@
        (let [entity-desc# (array-map
                             :id ~(keyword (str ns) (clojure.string/lower-case (str entity-name)))
                             :name ~(str entity-name)
+                            :ns ~(str ns)
                             :longname (clojure.reflect/typename ~entity-name)
                             :doc ~doc
-                            :ns ~ns                       ;;caller ns
                             :class ~entity-name
                             :kind :entity
                             :schema-ref (quote ~schema-ref-symbol)
@@ -86,21 +86,8 @@
 
 (comment
 
-  (macroexpand-1 '(defentity MyEntity
-                             {:title {:required? true} string?
-                                     :name string?
-                              }
-                             [:map
-                              [:title string?]
-                              [:price Amount]]
-                             {:doc "Any documentation here"}
-                             ;(fn say-it [this word] (str (:title this) " with " word))
-                             ))
-
   (say-it (->myentity {:title "hello"}) "world")
 
   (say (specy.entity/->notice {:id 1, :ean "12134"}) "coucou")
-
-
 
   )

@@ -1,15 +1,4 @@
-(ns specy.protocols
-  (:require [#?(:clj  clojure.spec.gen.alpha
-                :cljs cljs.spec.gen.alpha) :as gen]
-            [#?(:clj  clojure.spec.alpha
-                :cljs cljs.spec.alpha) :as s]
-            [clojure.test.check.generators :as check-gen]
-            [tick.alpha.api :as t]
-            [specy.time :as time]
-            [specy.uuid :as uuid]
-            )
-  ;; (:refer-clojure :exclude [range iterate format max min]) ;; for java-time to exclude conflicting fn name
-  )
+(ns specy.protocols)
 
 (defprotocol EventBus
   "A simple pub/sub interface for publishing event indexed with key k (the key value must be extracted from the event and is up to the implementation, this ensure homogeneity of the key extraction from the event)"
@@ -34,6 +23,7 @@
 (defprotocol BuildingBlocksRepository
   "Protocol for building blocks access"
   (store! [repo block])
+  (all [repo])
   (get-entity [repo name])
   (get-value  [repo name])
   (get-command [repo name])

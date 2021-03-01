@@ -1,6 +1,6 @@
 (ns specy.infra.bus
   (:require
-   [clojure.tools.logging :as log :refer [info]]
+   [specy.internal.logging :refer [debug]]
    #?(:clj  [clojure.core.async :refer [chan <! >! timeout pub sub unsub unsub-all go go-loop buffer dropping-buffer]])
    #?(:cljs [cljs.core.async :refer [chan <! >! timeout pub sub unsub unsub-all go go-loop buffer dropping-buffer]])
    [specy.protocols :refer [EventBus publish! subscribe]]
@@ -11,12 +11,13 @@
 (defrecord CoreAsyncEventBus [name pub-chan publication]
   EventBus
   (publish! [_ event]
-    (info "publish event " event)
+    (debug "publish event " event)
     (go (>! pub-chan event)))
   (subscribe [_ f]
-    (throw (UnsupportedOperationException. "Can't subscribe without a key to CoreAsyncEventBus (though possible with mult but not implemented, left as an exercise to the reader)")))
+    (throw (#?(:clj UnsupportedOperationException.
+               :cljs js/Error) "Can't subscribe without a key to CoreAsyncEventBus (though possible with mult but not implemented, left as an exercise to the reader)")))
   (subscribe [_ k f]
-    (info "subscribe to event with key " k)
+    (debug "subscribe to event with key " k)
     (let [sub-chan (chan (buffer BUFFER_SIZE))]
       (sub publication k sub-chan)
       (go-loop []

@@ -1,46 +1,29 @@
 (ns specy.event
-  (:require [#?(:clj  clojure.spec.gen.alpha
-                :cljs cljs.spec.gen.alpha) :as gen]
-            [#?(:clj  clojure.spec.alpha
-                :cljs cljs.spec.alpha) :as s]
-            [clojure.test.check.generators :as check-gen]
-            [tick.alpha.api :as t]
+  (:require [tick.alpha.api :as t]
+            [malli.util :as mu]
             [specy.uuid :as uuid]
-            [specy.utils :refer [create-map]]
+            [specy.validation :as sv]
             [specy.time :as time]
-            [specy.event :as event]
-            [specy.query :as query]
-            [specy.protocols :refer :all]
-            [specy.infra.bus :refer [bus]]
-            [specy.infra.repository :refer [building-blocks]]
-            [specy.utils :refer [inspect operations parse-opts+specs]]
-            [malli
-             [core :as mc]
-             [generator :as mg]
-             [util :as mu]
-             [error :as me]]))
+            [specy.protocols :refer [store!]]
+            [specy.infra.repository :refer [building-blocks]])
+  #?(:cljs (:require-macros [specy.event])))
 
 (def metadata-schema [:map
                       [:id uuid?]
                       [:type keyword?]
                       [:published-at [:and {:gen/elements [(t/instant)]} [:fn time/instant?]]] ;; FIXME by using :instance instead, (PR https://github.com/metosin/malli/pull/176)
-                      [:published-by string?]
-                      [:correlation-id string?]])
+                      [:published-by any?]
+                      [:correlation-id uuid?]])
 
-(defn ->metadata [{:keys [id type published-at published-by correlation-id] :as metadata}]
-  (merge {:id             (or id (uuid/random))
-          :type           type
-          :published-at   (or published-at (t/instant))
-          :published-by   published-by
-          :correlation-id (or correlation-id (uuid/random))}
-         metadata))
+(defn ->metadata [{:keys [id published-at published-by correlation-id from-event from-command meta] :as metadata}]
+  (cond-> {:id             (or id (uuid/random))
+           :published-at   (or published-at (t/instant))
+           :published-by   (or published-by (:issued-by from-event) (:issued-by from-command))
+           :correlation-id (or correlation-id (:correlation-id from-event) (:correlation-id from-command) (uuid/random))}
+          meta (assoc :meta meta)))
 
-(defn assert-schema [schema data]
-  (if (mc/validate schema data)
-    data
-    (let [explain (mc/explain schema data)]
-      (throw (ex-info (str "Not conform to schema :\n" (me/humanize explain) "")
-                      explain)))))
+(defn- print-metadata-builder [m] (->> m (filter (partial not= :type)) (map (fn [e] [e nil])) (into {})))
+(defn- print-payload-builder [m] (->> m (map (fn [e] [e nil])) (into {})))
 
 (defmacro defevent
   "(defevent event-name schema options) where options is a map with :
@@ -62,27 +45,44 @@
                    [:map
                     [:payload ~schema]]))
 
+       (defn
+         ^{:doc    ~(str "Validate data from schema " schema-ref-symbol)
+           :static true}
+         ~(symbol (str event-name "?")) [event#] (sv/valid? ~schema-ref-symbol event#))
+
        (defn ~builder-ref-symbol
          ~(str "Create a event of type ")
          [metadata# data#]
-         (assert-schema ~schema-ref-symbol (assoc (->metadata metadata#) :payload data#)))
+         (sv/assert-schema ~schema-ref-symbol (assoc (->metadata metadata#)
+                                             :type ~(keyword (str ns) (clojure.string/lower-case (str event-name)))
+                                             :payload data#)))
 
        (let [event-desc# (array-map
-                             :id ~(keyword (str ns) (clojure.string/lower-case (str event-name)))
-                             :name ~(str event-name)
-                             ;:longname (clojure.reflect/typename ~event-name)
-                             :doc ~doc
-                             :ns ~ns                        ;;caller ns
-                             :kind :event
-                             :schema-ref (quote ~schema-ref-symbol)
-                             :schema ~schema-ref-symbol
-                             :builder (quote ~(symbol (str "("
-                                                           ns "/" builder-ref-symbol " "
-                                                           (->> metadata-props (map (fn [e] [e '...])) (into {}))
-                                                           (->> props (map (fn [e] [e '...])) (into {}))
-                                                           ")"))))]
-         (store! building-blocks event-desc#)
-         (publish! bus event-desc#)
+                           :id ~(keyword (str ns) (clojure.string/lower-case (str event-name)))
+                           :name ~(str event-name)
+                           :ns  ~(str ns)
+                           ;:longname (clojure.reflect/typename ~event-name)
+                           :doc ~doc
+                           :kind :event
+                           :schema-ref (quote ~schema-ref-symbol)
+                           :schema ~schema-ref-symbol
+                           :validation-fn (quote ~(symbol (str "(" ns "/" event-name "? event)")))
+                           :builder (quote ~(symbol (str "("
+                                                         ns "/" builder-ref-symbol " "
+                                                         (print-metadata-builder metadata-props)
+                                                         (print-payload-builder props)
+                                                         ")")))
+                           :builder-from-command (quote ~(symbol (str "("
+                                                                      ns "/" builder-ref-symbol " "
+                                                                      "{:from-command command}"
+                                                                      (print-payload-builder props)
+                                                                      ")")))
+                           :builder-from-query (quote ~(symbol (str "("
+                                                                    ns "/" builder-ref-symbol " "
+                                                                    "{:from-query query}"
+                                                                    (print-payload-builder props)
+                                                                    ")"))))]
+         #?(:clj (store! building-blocks event-desc#))
          event-desc#))))
 
 

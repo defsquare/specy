@@ -82,9 +82,9 @@
        (let [value-desc# (array-map
                            :id ~(keyword (str ns) (clojure.string/lower-case (str value-name)))
                            :name ~(str value-name)
+                           :ns  ~(str ns)
                            :longname (clojure.reflect/typename ~value-name)
                            :doc ~doc
-                           :ns ~ns                          ;;caller ns
                            :class ~value-name
                            :kind :value
                            :schema-ref (quote ~schema-ref-symbol)

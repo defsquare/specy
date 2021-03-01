@@ -45,8 +45,8 @@
 
         (let [referential-desc# {:id       ~id
                                  :name     ~(str name)
+                                 :ns       ~(str ns)
                                  :longname ~(clojure.reflect/typename name)
-                                 :ns       ~ns
                                  :class    ~name
                                  :kind     :referential
                                  :spec     ~(symbol (str name "-spec"))
