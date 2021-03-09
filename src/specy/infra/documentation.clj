@@ -2,10 +2,11 @@
   (:require                                                 ;[spec-tools.json-schema :as json-schema]
     [hiccup.page :refer [include-js include-css]]
     [cheshire.core :as csc]
-    [specy.infra.bus :refer [assets]]
     [malli.json-schema :as json-schema]
+    [specy.infra.bus :refer [assets]]
     [specy.infra.repository :refer [building-blocks]]
-    [specy.protocols :refer [all]]))
+    [specy.protocols :refer [all]]
+    [specy.registry :refer [get-registry]]))
 
 ;(defmethod json-schema/accept-spec 'specy.time/duration? [_ _ _ _] {:type "java.time.Duration"})
 ;(defmethod json-schema/accept-spec 'domain.amount/Currency? [_ _ _ _] {:type "domain.amount.Currency"})
@@ -22,7 +23,7 @@
            :ns       ns}
           doc (assoc :doc doc)
           rely-on (assoc :rely-on (some-> rely-on clojure.reflect/typename))
-          schema (assoc :schema (json-schema/transform schema))))
+          schema (assoc :schema (json-schema/transform schema {:registry (get-registry)}))))
 
 (defn generate []
   (hiccup.core/html [:html
