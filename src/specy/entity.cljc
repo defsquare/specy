@@ -40,6 +40,7 @@
          ~(symbol (str (string/capitalize entity-name) "Procotol"))
          ~@implementations)
 
+       (declare ~builder-ref-symbol)
        (defn ~builder-ref-symbol [m#]
          (sv/assert-schema ~schema-ref-symbol m#)
          (~(symbol (str "map->" entity-name)) m#))
@@ -53,7 +54,7 @@
                             :id ~(keyword (str ns) (clojure.string/lower-case (str entity-name)))
                             :name ~(str entity-name)
                             :ns ~(str ns)
-                            :longname (clojure.reflect/typename ~entity-name)
+                            ;:longname (clojure.reflect/typename ~entity-name)
                             :doc ~doc
                             :class ~entity-name
                             :kind :entity

@@ -68,7 +68,7 @@
                            :id ~full-qualified-id
                            :name ~(str value-name)
                            :ns  ~(str ns)
-                           :longname (clojure.reflect/typename ~value-name)
+                           ;:longname (clojure.reflect/typename ~value-name)
                            :doc ~doc
                            :class ~value-name
                            :kind :value

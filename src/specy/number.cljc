@@ -2,7 +2,7 @@
   (:require
     [clojure.spec.gen.alpha :as gen]
     [clojure.test.check.generators :as check-gen]
-    #?(:cljs ["/electre/common/big.js" :as big :refer [Big]]);;needs shadow-cljs for properly requiring https://shadow-cljs.github.io/docs/UsersGuide.html#_requiring_js
+    #?(:cljs ["/specy/big.js" :as big :refer [Big]]);;needs shadow-cljs for properly requiring https://shadow-cljs.github.io/docs/UsersGuide.html#_requiring_js
     )
   #?(:clj (:import [java.text NumberFormat]
                    [java.math BigDecimal RoundingMode]
