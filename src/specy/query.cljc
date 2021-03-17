@@ -42,7 +42,8 @@
        (def ~schema-ref-symbol
          (mu/merge metadata-schema
                    [:map
-                    [:payload ~schema]]))
+                    [:payload ~schema]]
+                   {:registry (specy.registry/get-registry)}))
 
        (defn
          ^{:doc    ~(str "Validate data from schema " schema-ref-symbol)
