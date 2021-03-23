@@ -15,11 +15,11 @@
                       [:published-by any?]
                       [:correlation-id uuid?]])
 
-(defn ->metadata [{:keys [id published-at published-by correlation-id from-event from-command meta] :as metadata}]
+(defn ->metadata [{:keys [id published-at published-by correlation-id from-query from-command meta] :as metadata}]
   (cond-> {:id             (or id (uuid/random))
            :published-at   (or published-at (t/instant))
-           :published-by   (or published-by (:issued-by from-event) (:issued-by from-command))
-           :correlation-id (or correlation-id (:correlation-id from-event) (:correlation-id from-command) (uuid/random))}
+           :published-by   (or published-by (:issued-by from-query) (:issued-by from-command))
+           :correlation-id (or correlation-id (:correlation-id from-query) (:correlation-id from-command) (uuid/random))}
           meta (assoc :meta meta)))
 
 (defn- print-metadata-builder [m] (->> m (filter (partial not= :type)) (map (fn [e] [e nil])) (into {})))

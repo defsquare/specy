@@ -18,7 +18,7 @@
 (defn ->metadata [{:keys [id issued-at issued-by correlation-id from-event meta] :as metadata}]
   (cond-> {:id             (or id (uuid/random))
            :issued-at      (or issued-at (t/instant))
-           :issued-by      (or issued-by (:issued-by from-event))
+           :issued-by      (or issued-by (:published-by from-event))
            :correlation-id (or correlation-id (:correlation-id from-event) (uuid/random))}
           meta (assoc :meta meta)))
 
