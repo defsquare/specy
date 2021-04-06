@@ -3,9 +3,7 @@
             [specy.validation :as sv]
             [specy.protocols :refer [store!]]
             [specy.infra.repository :refer [building-blocks]]
-            [specy.registry :as sr]
-            [malli.core :as mc]
-            [malli.generator :as mg]))
+            [specy.registry :as sr]))
 
 #_(defmacro add-valuable-operations [name fields]
   (let [sb (gensym 'sb)
@@ -19,18 +17,6 @@
                                          `(.append ~sb (get ~value ~(keyword (str field))))))
                            (interpose :space fields))
                     (.toString ~sb))))))
-
-(defn assert-schema [schema data]
-  (if (mc/validate schema data)
-    data
-    (let [explain (mc/explain schema data)]
-      (throw (ex-info (str "Not conform to schema :\n" (me/humanize explain) "")
-                      explain)))))
-
-(defn- get-fields [args]
-  ;;reduce until  
-
-  )
 
 (defmacro defvalue
   "(defvalue value-name schema options & behaviors) where options is a map with
