@@ -1,0 +1,1 @@
+npx http-server dist -p 3001

@@ -1,5 +1,5 @@
 (ns specy.query
-  (:require [tick.alpha.api :as t]
+  (:require [tick.core :as t]
             [malli.util :as mu]
             [specy.uuid :as uuid]
             [specy.validation :as sv]
@@ -54,29 +54,29 @@
          ~(str "Create a query of type ")
          [metadata# data#]
          (sv/assert-schema ~schema-ref-symbol (assoc (->metadata metadata#)
-                                             :type ~(keyword (str ns) (clojure.string/lower-case (str query-name)))
-                                             :payload data#)))
+                                                :type ~(keyword (str ns) (clojure.string/lower-case (str query-name)))
+                                                :payload data#)))
 
        (let [query-desc# (array-map
-                              :id ~(keyword (str ns) (clojure.string/lower-case (str query-name)))
-                              :name ~(str query-name)
-                              :ns  ~(str ns)
-                              ;:longname (clojure.reflect/typename ~query-name)
-                              :doc ~doc
-                              :kind :query
-                              :schema-ref (quote ~schema-ref-symbol)
-                              :schema ~schema-ref-symbol
-                              :validation-fn (quote ~(symbol (str "(" ns "/" query-name "? query)")))
-                              :builder (quote ~(symbol (str "("
-                                                            ns "/" builder-ref-symbol " "
-                                                            (print-metadata-builder metadata-props)
-                                                            (print-payload-builder props)
-                                                            ")")))
-                              :builder-from-event (quote ~(symbol (str "("
-                                                                       ns "/" builder-ref-symbol " "
-                                                                       "{:from-event event}"
-                                                                       (print-payload-builder props)
-                                                                       ")"))))]
+                           :id ~(keyword (str ns) (clojure.string/lower-case (str query-name)))
+                           :name ~(str query-name)
+                           :ns ~(str ns)
+                           ;:longname (clojure.reflect/typename ~query-name)
+                           :doc ~doc
+                           :kind :query
+                           :schema-ref (quote ~schema-ref-symbol)
+                           :schema ~schema-ref-symbol
+                           :validation-fn (quote ~(symbol (str "(" ns "/" query-name "? query)")))
+                           :builder (quote ~(symbol (str "("
+                                                         ns "/" builder-ref-symbol " "
+                                                         (print-metadata-builder metadata-props)
+                                                         (print-payload-builder props)
+                                                         ")")))
+                           :builder-from-event (quote ~(symbol (str "("
+                                                                    ns "/" builder-ref-symbol " "
+                                                                    "{:from-event event}"
+                                                                    (print-payload-builder props)
+                                                                    ")"))))]
          (store! building-blocks query-desc#)
          query-desc#))))
 

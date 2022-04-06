@@ -1,0 +1,14 @@
+{:deps   {}
+ :builds {:app   {:target          :browser
+                  :closure-defines {malli.registry/type "custom"}
+                  :output-dir      "resources/public/js"
+                  :modules         {:main {:entries [specy]}}
+                  :devtools        {:http-root "resources/public"
+                                    :http-port 3001}}
+
+          :build {:target           :browser
+                  :closure-defines  {malli.registry/type "custom"}
+                  :output-dir       "dist/js"
+                  :modules          {:main {:entries [specy]}}
+                  :compiler-options {:infer-externs :auto
+                                     :optimizations :advanced}}}}

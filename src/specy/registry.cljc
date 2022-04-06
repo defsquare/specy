@@ -5,7 +5,7 @@
             [specy.number :as n]))
 
 
-(def ^:private -specy-registry* (atom (mc/default-schemas)))
+(def -specy-registry* (atom (mc/default-schemas)))
 
 (defn get-registry [] (deref -specy-registry*))
 
@@ -23,17 +23,3 @@
 
 (register! :bigint n/bigint? (n/gen-bigint))
 (register! :pos-bigint n/pos-bigint? (n/gen-pos-bigint))
-
-
-(comment
-  (mg/generate (mc/schema :specy.value/mybasket {:registry (get-registry)})
-               {:registry (get-registry)})
-
-  (mg/generate (mc/schema :bigint {:registry (get-registry)})
-               {:registry (get-registry)})
-
-  (mg/generate (mc/schema [:map [:price :bigint]] {:registry (get-registry)})
-               {:registry (get-registry)})
-
-  (mg/generate (mc/schema [:map [:price :string]]) {:registry (get-registry)})
-  )

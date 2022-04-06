@@ -3,7 +3,8 @@
             [specy.validation :as sv]
             [specy.protocols :refer [store!]]
             [specy.infra.repository :refer [building-blocks]]
-            [specy.registry :as sr]))
+            [specy.registry :as sr])
+  #?(:cljs (:require-macros [specy.value])))
 
 #_(defmacro add-valuable-operations [name fields]
   (let [sb (gensym 'sb)
@@ -66,7 +67,7 @@
                            :id ~full-qualified-id
                            :name ~(str value-name)
                            :ns  ~(str ns)
-                           :longname (clojure.reflect/typename ~value-name)
+                           ;:longname (clojure.reflect/typename ~value-name)
                            :doc ~doc
                            :class ~value-name
                            :kind :value

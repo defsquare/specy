@@ -15,13 +15,7 @@
             [malli.util :as mu]
             [malli.error :as me]))
 
-(defn assert-schema [schema data]
-  (if (mc/validate schema data)
-    data
-    (let [explain (mc/explain schema data)]
-      (throw (ex-info (str "Not conform to schema :\n" (me/humanize explain) "")
-                      explain)))))
-
+(declare defentity)
 (defmacro defentity
   "(defentity entity-name schema options & behaviors) where options is a map with
        - schema : schema that describes data structure. Can be a map or a ref to a schema
@@ -69,7 +63,6 @@
                             :id ~(keyword (str ns) (clojure.string/lower-case (str entity-name)))
                             :name ~(str entity-name)
                             :ns ~(str ns)
-                            :longname (clojure.reflect/typename ~entity-name)
                             :doc ~doc
                             :class ~entity-name
                             :kind :entity
