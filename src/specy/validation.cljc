@@ -9,9 +9,10 @@
     (if (mc/validate schema data {:registry (get-registry)})
       data
       (let [explain (mc/explain schema data {:registry (get-registry)})]
-        (throw (ex-info (str "Not conform to schema :\n" (me/humanize explain) "")
-                        explain))))))
+        (throw
+          #?(:clj (ex-info (str "Not conform to schema :\n" (me/humanize explain) "") explain)
+             :cljs (js/Error (str "Not conform to schema :\n" (me/humanize explain) " due to " explain))))))))
 
 (defn valid? [schema data] (try (any? (assert-schema schema data))
-                                       #?(:clj  (catch Exception e (log/error (str (.getMessage e)  " - " (.getData e))) false)
-                                          :cljs (catch :default e (log/error e) false))))
+                                #?(:clj  (catch Exception e (log/error (str (.getMessage e) " - " (.getData e))) false)
+                                   :cljs (catch :default e (log/error e) false))))
