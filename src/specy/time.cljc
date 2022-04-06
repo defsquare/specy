@@ -6,7 +6,7 @@
      (:require
        [clojure.spec.gen.alpha :as gen]
        [clojure.spec.alpha :as s]
-       [tick.alpha.api :as t]
+       [tick.core :as t]
        [cljc.java-time.instant :as i :refer [to-epoch-milli]]
        [cljc.java-time.local-date-time :as ldt :refer [of-instant]]
        [cljc.java-time.local-date :as ld]

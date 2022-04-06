@@ -1,5 +1,5 @@
 (ns specy.event
-  (:require [tick.alpha.api :as t]
+  (:require [tick.core :as t]
             [malli.util :as mu]
             [specy.uuid :as uuid]
             [specy.validation :as sv]
