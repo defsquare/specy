@@ -1,8 +1,7 @@
 (ns specy.infra.repository
   (:require
     [clojure.set :refer [index]]
-    [specy.protocols :refer [BuildingBlocksRepository store! EventBus subscribe]]
-    [specy.infra.bus :refer [bus]]))
+    [specy.protocols :refer [BuildingBlocksRepository]]))
 
 (defrecord BuildingBlocksRepositoryInMemory
   [db indexes]

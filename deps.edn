@@ -20,7 +20,7 @@
            org.clojure/test.check              {:mvn/version "0.10.0"}
 
            metosin/spec-tools                  {:mvn/version "0.10.1"}
-           metosin/malli                       {:mvn/version "0.2.1"}}
+           metosin/malli                       {:mvn/version "0.6.2"}}
  :aliases {:artifact-name {:extra-deps {metav/metav {:mvn/version "1.6.7"}}
                            :main-opts  ["-m" "metav.display"]}
            :spit          {:extra-deps {metav/metav {:mvn/version "1.6.7"}}
