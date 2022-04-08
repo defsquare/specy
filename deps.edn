@@ -9,7 +9,7 @@
            tongue/tongue                       {:mvn/version "0.4.4"}
 
            ;;logging
-           org.clojure/tools.logging           {:mvn/version "1.1.0"}
+           org.clojure/tools.logging           {:mvn/version "1.2.4"}
            org.slf4j/slf4j-api                 {:mvn/version "2.0.0-alpha1"}
            ch.qos.logback/logback-classic      {:mvn/version "1.3.0-alpha5"}
            ch.qos.logback/logback-core         {:mvn/version "1.3.0-alpha5"}
@@ -26,7 +26,7 @@
            :spit          {:extra-deps {metav/metav {:mvn/version "1.6.7"}}
                            :main-opts  ["-m" "metav.spit"]}
            :dev           {:extra-deps {vvvvalvalval/scope-capture {:mvn/version "0.3.2"}
-                                        thheller/shadow-cljs       {:mvn/version "2.11.23"}}}
+                                        thheller/shadow-cljs       {:mvn/version "2.18.0"}}}
            :example       {:extra-paths ["example"]
                            :extra-deps  {yada/lean   {:mvn/version "1.2.15"}
                                          ;yada  {:mvn/version "1.2.16"}

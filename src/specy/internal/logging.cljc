@@ -1,7 +1,8 @@
 (ns specy.internal.logging
   (:refer-clojure :exclude [time])
   (:require #?(:clj  [clojure.tools.logging :as log]
-               :cljs [goog.log :as glog]))
+               :cljs [goog.log :as glog])
+            #?(:cljs [goog.log :as glog]))
   #?(:cljs (:import goog.debug.Console)))
 
 #?(:cljs
@@ -9,13 +10,13 @@
      (glog/getLogger "app")))
 
 #?(:cljs
-   (def levels {:severe goog.debug.Logger.Level.SEVERE
-                :warning goog.debug.Logger.Level.WARNING
-                :info goog.debug.Logger.Level.INFO
-                :config goog.debug.Logger.Level.CONFIG
-                :fine goog.debug.Logger.Level.FINE
-                :finer goog.debug.Logger.Level.FINER
-                :finest goog.debug.Logger.Level.FINEST}))
+   (def levels {:severe goog.log.Level.SEVERE
+                :warning goog.log.Level.WARNING
+                :info goog.log.Level.INFO
+                :config goog.log.Level.CONFIG
+                :fine goog.log.Level.FINE
+                :finer goog.log.Level.FINER
+                :finest goog.log.Level.FINEST}))
 
 #?(:cljs
    (defn log-to-console! []
